@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, FileText, Mail, Eye } from "lucide-react";
+import { Plus, FileText, Mail, Pencil } from "lucide-react";
+import CampaignDialog from "@/components/CampaignDialog";
+import TemplateDialog from "@/components/TemplateDialog";
+import { useToast } from "@/hooks/use-toast";
 
 const mockCampaigns = [
   {
@@ -49,7 +52,13 @@ const mockTemplates = [
 ];
 
 export default function CampaignsList() {
-  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [campaigns, setCampaigns] = useState(mockCampaigns);
+  const [templates, setTemplates] = useState(mockTemplates);
+  const [campaignDialogOpen, setCampaignDialogOpen] = useState(false);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [editingCampaign, setEditingCampaign] = useState<any>(null);
+  const [editingTemplate, setEditingTemplate] = useState<any>(null);
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "outline"> = {
@@ -59,6 +68,30 @@ export default function CampaignsList() {
       sending: "secondary",
     };
     return <Badge variant={variants[status] || "outline"}>{status}</Badge>;
+  };
+
+  const handleSaveCampaign = (campaign: any) => {
+    if (campaign.id) {
+      setCampaigns(campaigns.map(c => c.id === campaign.id ? campaign : c));
+      toast({ title: "Campaign updated successfully" });
+    } else {
+      const newCampaign = { ...campaign, id: campaigns.length + 1, sentCount: 0, failedCount: 0 };
+      setCampaigns([...campaigns, newCampaign]);
+      toast({ title: "Campaign created successfully" });
+    }
+    setEditingCampaign(null);
+  };
+
+  const handleSaveTemplate = (template: any) => {
+    if (template.id) {
+      setTemplates(templates.map(t => t.id === template.id ? template : t));
+      toast({ title: "Template updated successfully" });
+    } else {
+      const newTemplate = { ...template, id: templates.length + 1, updatedAt: new Date().toISOString().split('T')[0] };
+      setTemplates([...templates, newTemplate]);
+      toast({ title: "Template created successfully" });
+    }
+    setEditingTemplate(null);
   };
 
   return (
@@ -84,7 +117,7 @@ export default function CampaignsList() {
 
         <TabsContent value="campaigns" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => navigate("/admin/campaigns/new")}>
+            <Button onClick={() => { setEditingCampaign(null); setCampaignDialogOpen(true); }}>
               <Plus className="mr-2 h-4 w-4" />
               New Campaign
             </Button>
@@ -128,9 +161,9 @@ export default function CampaignsList() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => navigate(`/admin/campaigns/${campaign.id}`)}
+                          onClick={() => { setEditingCampaign(campaign); setCampaignDialogOpen(true); }}
                         >
-                          <Eye className="h-4 w-4" />
+                          <Pencil className="h-4 w-4" />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -143,7 +176,7 @@ export default function CampaignsList() {
 
         <TabsContent value="templates" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => navigate("/admin/templates/new")}>
+            <Button onClick={() => { setEditingTemplate(null); setTemplateDialogOpen(true); }}>
               <Plus className="mr-2 h-4 w-4" />
               New Template
             </Button>
@@ -170,9 +203,9 @@ export default function CampaignsList() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => navigate(`/admin/templates/${template.id}`)}
+                          onClick={() => { setEditingTemplate(template); setTemplateDialogOpen(true); }}
                         >
-                          <Eye className="h-4 w-4" />
+                          <Pencil className="h-4 w-4" />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -183,6 +216,20 @@ export default function CampaignsList() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <CampaignDialog
+        open={campaignDialogOpen}
+        onOpenChange={setCampaignDialogOpen}
+        campaign={editingCampaign}
+        onSave={handleSaveCampaign}
+      />
+
+      <TemplateDialog
+        open={templateDialogOpen}
+        onOpenChange={setTemplateDialogOpen}
+        template={editingTemplate}
+        onSave={handleSaveTemplate}
+      />
     </div>
   );
 }

@@ -2,8 +2,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, RefreshCw, Activity } from "lucide-react";
+import { Plus, RefreshCw, Activity, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import ServiceDialog from "@/components/ServiceDialog";
 
 const mockServices = [
   {
@@ -38,6 +39,8 @@ const mockServices = [
 export default function ServicesList() {
   const { toast } = useToast();
   const [services, setServices] = useState(mockServices);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingService, setEditingService] = useState<any>(null);
 
   const handleHealthCheck = async (serviceId: number) => {
     toast({
@@ -69,6 +72,28 @@ export default function ServicesList() {
     });
   };
 
+  const handleSaveService = (service: any) => {
+    if (service.id) {
+      setServices(services.map(s => s.id === service.id ? service : s));
+      toast({ title: "Service updated successfully" });
+    } else {
+      const newService = { ...service, id: services.length + 1, status: "down" };
+      setServices([...services, newService]);
+      toast({ title: "Service added successfully" });
+    }
+    setEditingService(null);
+  };
+
+  const handleEdit = (service: any) => {
+    setEditingService(service);
+    setDialogOpen(true);
+  };
+
+  const handleNew = () => {
+    setEditingService(null);
+    setDialogOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -76,7 +101,7 @@ export default function ServicesList() {
           <h1 className="text-3xl font-bold tracking-tight">Services</h1>
           <p className="text-muted-foreground">Monitor and manage your API services</p>
         </div>
-        <Button>
+        <Button onClick={handleNew}>
           <Plus className="mr-2 h-4 w-4" />
           Add Service
         </Button>
@@ -122,6 +147,13 @@ export default function ServicesList() {
                   <Activity className="mr-2 h-4 w-4" />
                   Check Health
                 </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleEdit(service)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
                 {service.processName && (
                   <Button 
                     variant="outline" 
@@ -136,6 +168,13 @@ export default function ServicesList() {
           </Card>
         ))}
       </div>
+
+      <ServiceDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        service={editingService}
+        onSave={handleSaveService}
+      />
     </div>
   );
 }
