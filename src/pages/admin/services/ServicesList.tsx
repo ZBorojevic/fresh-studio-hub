@@ -116,21 +116,13 @@ export default function ServicesList() {
                   <CardTitle className="text-lg">{service.name}</CardTitle>
                   <p className="text-sm text-muted-foreground">{service.description}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div 
-                    className={`w-2.5 h-2.5 rounded-full ${
-                      service.status === "up" 
-                        ? "bg-green-500 shadow-[0_0_8px_2px_rgba(34,197,94,0.6)]" 
-                        : "bg-red-500"
-                    }`}
-                  />
-                  <Badge 
-                    variant={service.status === "up" ? "default" : "destructive"}
-                    className={service.status === "up" ? "bg-success" : ""}
-                  >
-                    {service.status === "up" ? "UP" : "DOWN"}
-                  </Badge>
-                </div>
+                <div 
+                  className={`w-3 h-3 rounded-full ${
+                    service.status === "up" 
+                      ? "bg-green-500 shadow-[0_0_12px_3px_rgba(34,197,94,0.7)]" 
+                      : "bg-red-500 shadow-[0_0_8px_2px_rgba(239,68,68,0.5)]"
+                  }`}
+                />
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
