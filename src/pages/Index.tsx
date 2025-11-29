@@ -1,17 +1,20 @@
-import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import logo from "@/assets/logo.svg";
 
 const Index = () => {
   const navigate = useNavigate();
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center space-y-6">
-        <h1 className="text-5xl font-bold text-primary">Fresh Studio</h1>
-        <p className="text-xl text-muted-foreground">Admin Dashboard</p>
-        <Button onClick={() => navigate("/admin/login")} size="lg">
-          Access Admin Panel
-        </Button>
+      <div
+        className="flex flex-col items-center cursor-pointer transition-transform duration-200 hover:scale-105"
+        onClick={() => navigate("/login")}
+      >
+        <img
+          src={logo}
+          alt="Fresh Studio logo"
+          className="w-40 h-40"
+        />
       </div>
     </div>
   );

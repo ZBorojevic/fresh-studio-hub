@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+
 import { AdminLayout } from "@/components/AdminLayout";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -24,8 +25,16 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* Landing stranica s logom */}
           <Route path="/" element={<Index />} />
-          <Route path="/admin/login" element={<Login />} />
+
+          {/* Nova login ruta */}
+          <Route path="/login" element={<Login />} />
+
+          {/* Stara ruta /admin/login → redirect na /login (za svaki slučaj / stare linkove) */}
+          <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+
+          {/* Admin dio ostaje pod /admin */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="blog" element={<BlogList />} />
@@ -35,7 +44,8 @@ const App = () => (
             <Route path="campaigns" element={<CampaignsList />} />
             <Route path="services" element={<ServicesList />} />
           </Route>
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+
+          {/* 404 */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
