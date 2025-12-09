@@ -1,4 +1,5 @@
-import { useState } from "react";
+// src/pages/admin/leads/LeadsList.tsx
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,70 +22,78 @@ import {
 } from "@/components/ui/select";
 import { Plus, Search, Upload, Eye, CheckCircle, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiFetch } from "@/lib/api";
 
-const mockLeads = [
-  {
-    id: 1,
-    companyName: "Tech Solutions Ltd",
-    firstName: "Ivan",
-    lastName: "Horvat",
-    email: "ivan@techsolutions.com",
-    tel: "+385 91 234 5678",
-    city: "Zagreb",
-    niche: "IT Services",
-    service: "Web Development",
-    isQualified: true,
-    contacted: false,
-  },
-  {
-    id: 2,
-    companyName: "Digital Marketing Co",
-    firstName: "Ana",
-    lastName: "Kovač",
-    email: "ana@digitalmark.hr",
-    tel: "+385 92 345 6789",
-    city: "Split",
-    niche: "Marketing",
-    service: "SEO",
-    isQualified: true,
-    contacted: true,
-  },
-  {
-    id: 3,
-    companyName: "Creative Agency",
-    firstName: "Marko",
-    lastName: "Petrović",
-    email: "marko@creative.com",
-    tel: "+385 98 456 7890",
-    city: "Rijeka",
-    niche: "Design",
-    service: "Branding",
-    isQualified: false,
-    contacted: false,
-  },
-];
+type Lead = {
+  id: number;
+  companyName: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  tel: string | null;
+  city: string | null;
+  niche: string | null;
+  service: string | null;
+  isQualified: boolean;
+  contacted: boolean;
+};
+
+type LeadsResponse = {
+  items: Lead[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
 
 export default function LeadsList() {
   const navigate = useNavigate();
   const { toast } = useToast();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [cityFilter, setCityFilter] = useState("all");
   const [qualifiedFilter, setQualifiedFilter] = useState("all");
+  const [page, setPage] = useState(1);
 
-  const filteredLeads = mockLeads.filter((lead) => {
-    const matchesSearch = 
-      lead.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lead.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      `${lead.firstName} ${lead.lastName}`.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesCity = cityFilter === "all" || lead.city === cityFilter;
-    const matchesQualified = 
-      qualifiedFilter === "all" || 
-      (qualifiedFilter === "qualified" && lead.isQualified) ||
-      (qualifiedFilter === "unqualified" && !lead.isQualified);
-    
-    return matchesSearch && matchesCity && matchesQualified;
-  });
+  const [loading, setLoading] = useState(false);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [total, setTotal] = useState(0);
+  const pageSize = 20;
+
+  useEffect(() => {
+    const fetchLeads = async () => {
+      try {
+        setLoading(true);
+
+        const params = new URLSearchParams({
+          search: searchQuery,
+          city: cityFilter,
+          status: qualifiedFilter === "all" ? "all" : qualifiedFilter,
+          page: String(page),
+          pageSize: String(pageSize),
+        });
+
+        const res = await apiFetch(`/leads?${params.toString()}`);
+        if (!res.ok) {
+          throw new Error("Failed to fetch leads");
+        }
+
+        const data = (await res.json()) as LeadsResponse;
+        setLeads(data.items);
+        setTotal(data.total);
+      } catch (err) {
+        console.error(err);
+        toast({
+          title: "Greška",
+          description: "Nije moguće učitati leadove.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLeads();
+  }, [searchQuery, cityFilter, qualifiedFilter, page, toast]);
 
   const handleImportCSV = () => {
     toast({
@@ -93,12 +102,21 @@ export default function LeadsList() {
     });
   };
 
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const changePage = (next: number) => {
+    if (next < 1 || next > totalPages) return;
+    setPage(next);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Leads</h1>
-          <p className="text-muted-foreground">Manage your customer leads and CRM data</p>
+          <p className="text-muted-foreground">
+            Manage your customer leads and CRM data
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleImportCSV}>
@@ -120,11 +138,20 @@ export default function LeadsList() {
               <Input
                 placeholder="Search leads..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setPage(1);
+                  setSearchQuery(e.target.value);
+                }}
                 className="pl-9"
               />
             </div>
-            <Select value={cityFilter} onValueChange={setCityFilter}>
+            <Select
+              value={cityFilter}
+              onValueChange={(val) => {
+                setPage(1);
+                setCityFilter(val);
+              }}
+            >
               <SelectTrigger className="w-full md:w-[180px]">
                 <SelectValue placeholder="Filter by city" />
               </SelectTrigger>
@@ -135,7 +162,13 @@ export default function LeadsList() {
                 <SelectItem value="Rijeka">Rijeka</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={qualifiedFilter} onValueChange={setQualifiedFilter}>
+            <Select
+              value={qualifiedFilter}
+              onValueChange={(val) => {
+                setPage(1);
+                setQualifiedFilter(val);
+              }}
+            >
               <SelectTrigger className="w-full md:w-[180px]">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
@@ -147,7 +180,7 @@ export default function LeadsList() {
             </Select>
           </div>
 
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -161,10 +194,14 @@ export default function LeadsList() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredLeads.map((lead) => (
+                {leads.map((lead) => (
                   <TableRow key={lead.id}>
-                    <TableCell className="font-medium">{lead.companyName}</TableCell>
-                    <TableCell>{`${lead.firstName} ${lead.lastName}`}</TableCell>
+                    <TableCell className="font-medium">
+                      {lead.companyName}
+                    </TableCell>
+                    <TableCell>
+                      {`${lead.firstName ?? ""} ${lead.lastName ?? ""}`.trim()}
+                    </TableCell>
                     <TableCell>{lead.email}</TableCell>
                     <TableCell>{lead.city}</TableCell>
                     <TableCell>{lead.service}</TableCell>
@@ -197,9 +234,44 @@ export default function LeadsList() {
                     </TableCell>
                   </TableRow>
                 ))}
+
+                {!loading && leads.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-6">
+                      No leads found.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
+              <span>
+                Page {page} of {totalPages} · {total} leads
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => changePage(page - 1)}
+                >
+                  Prev
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => changePage(page + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

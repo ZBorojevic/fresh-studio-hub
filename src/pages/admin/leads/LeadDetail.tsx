@@ -1,4 +1,5 @@
-import { useState } from "react";
+// src/pages/admin/leads/LeadDetail.tsx
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,52 +9,224 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, Mail, Phone, MapPin, Building } from "lucide-react";
+import {
+  ArrowLeft,
+  Save,
+  Mail,
+  Phone,
+  MapPin,
+  Building,
+  Trash2,
+} from "lucide-react";
+import { apiFetch } from "@/lib/api";
+
+type LeadForm = {
+  companyName: string;
+  firstName: string;
+  lastName: string;
+  title: string;
+  email: string;
+  tel: string;
+  website: string;
+  niche: string;
+  city: string;
+  service: string;
+  isQualified: boolean;
+  contacted: boolean;
+  notes: string;
+};
+
+const EMPTY_FORM: LeadForm = {
+  companyName: "",
+  firstName: "",
+  lastName: "",
+  title: "",
+  email: "",
+  tel: "",
+  website: "",
+  niche: "",
+  city: "",
+  service: "",
+  isQualified: false,
+  contacted: false,
+  notes: "",
+};
 
 export default function LeadDetail() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [formData, setFormData] = useState({
-    companyName: "Tech Solutions Ltd",
-    firstName: "Ivan",
-    lastName: "Horvat",
-    title: "CEO",
-    email: "ivan@techsolutions.com",
-    tel: "+385 91 234 5678",
-    website: "https://techsolutions.com",
-    niche: "IT Services",
-    city: "Zagreb",
-    service: "Web Development",
-    isQualified: true,
-    contacted: false,
-    notes: "Initial contact from website form. Interested in full website redesign.",
-  });
+  const isNew = !id || id === "new";
 
-  const handleSave = () => {
-    toast({
-      title: "Lead updated",
-      description: "Lead information has been saved successfully",
-    });
+  const [formData, setFormData] = useState<LeadForm>(EMPTY_FORM);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch postojećeg leada ako nije "new"
+  useEffect(() => {
+    const fetchLead = async () => {
+      if (isNew) {
+        setFormData(EMPTY_FORM);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const res = await apiFetch(`/leads/${id}`);
+        if (!res.ok) {
+          throw new Error("Failed to fetch lead");
+        }
+        const data = await res.json();
+
+        setFormData({
+          companyName: data.companyName ?? "",
+          firstName: data.firstName ?? "",
+          lastName: data.lastName ?? "",
+          title: "", // zasad nemamo u bazi
+          email: data.email ?? "",
+          tel: data.tel ?? "",
+          website: data.website ?? "",
+          niche: data.niche ?? "",
+          city: data.city ?? "",
+          service: data.service ?? "",
+          isQualified: !!data.isQualified,
+          contacted: !!data.contacted,
+          notes: data.notes ?? "",
+        });
+      } catch (err) {
+        console.error(err);
+        toast({
+          title: "Greška",
+          description: "Nije moguće učitati lead.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLead();
+  }, [id, isNew, toast]);
+
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+
+      const payload = {
+        companyName: formData.companyName || null,
+        firstName: formData.firstName || null,
+        lastName: formData.lastName || null,
+        email: formData.email || null,
+        tel: formData.tel || null,
+        website: formData.website || null,
+        niche: formData.niche || null,
+        city: formData.city || null,
+        service: formData.service || null,
+        isQualified: formData.isQualified,
+        contacted: formData.contacted,
+        notes: formData.notes || null,
+      };
+
+      const res = await apiFetch(isNew ? "/leads" : `/leads/${id}`, {
+        method: isNew ? "POST" : "PUT",
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to save lead");
+      }
+
+      const saved = await res.json();
+
+      toast({
+        title: isNew ? "Lead created" : "Lead updated",
+        description: "Lead information has been saved successfully.",
+      });
+
+      if (isNew) {
+        navigate(`/admin/leads/${saved.id}`, { replace: true });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Greška",
+        description: "Spremanje leada nije uspjelo.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (isNew) return;
+
+    if (!window.confirm("Sigurno obrisati ovaj lead?")) return;
+
+    try {
+      setLoading(true);
+      const res = await apiFetch(`/leads/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to delete lead");
+      }
+
+      toast({
+        title: "Lead deleted",
+        description: "Lead je uspješno obrisan.",
+      });
+
+      navigate("/admin/leads");
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Greška",
+        description: "Brisanje leada nije uspjelo.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/admin/leads")}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/admin/leads")}
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{formData.companyName}</h1>
-            <p className="text-muted-foreground">Lead Details</p>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {formData.companyName || (isNew ? "New Lead" : "Lead Details")}
+            </h1>
+            <p className="text-muted-foreground">
+              {isNew ? "Create a new lead" : "Lead details"}
+            </p>
           </div>
         </div>
-        <Button onClick={handleSave}>
-          <Save className="mr-2 h-4 w-4" />
-          Save Changes
-        </Button>
+        <div className="flex gap-2">
+          {!isNew && (
+            <Button
+              variant="outline"
+              type="button"
+              onClick={handleDelete}
+              disabled={loading}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </Button>
+          )}
+          <Button type="button" onClick={handleSave} disabled={loading}>
+            <Save className="mr-2 h-4 w-4" />
+            {loading ? "Saving..." : "Save Changes"}
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -69,7 +242,9 @@ export default function LeadDetail() {
                   <Input
                     id="companyName"
                     value={formData.companyName}
-                    onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, companyName: e.target.value })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -77,7 +252,9 @@ export default function LeadDetail() {
                   <Input
                     id="website"
                     value={formData.website}
-                    onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, website: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -88,7 +265,9 @@ export default function LeadDetail() {
                   <Input
                     id="firstName"
                     value={formData.firstName}
-                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, firstName: e.target.value })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -96,7 +275,9 @@ export default function LeadDetail() {
                   <Input
                     id="lastName"
                     value={formData.lastName}
-                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, lastName: e.target.value })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -104,7 +285,9 @@ export default function LeadDetail() {
                   <Input
                     id="title"
                     value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, title: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -118,7 +301,9 @@ export default function LeadDetail() {
                       id="email"
                       type="email"
                       value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
                       className="pl-9"
                     />
                   </div>
@@ -130,7 +315,9 @@ export default function LeadDetail() {
                     <Input
                       id="tel"
                       value={formData.tel}
-                      onChange={(e) => setFormData({ ...formData, tel: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, tel: e.target.value })
+                      }
                       className="pl-9"
                     />
                   </div>
@@ -145,7 +332,9 @@ export default function LeadDetail() {
                     <Input
                       id="city"
                       value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, city: e.target.value })
+                      }
                       className="pl-9"
                     />
                   </div>
@@ -157,7 +346,9 @@ export default function LeadDetail() {
                     <Input
                       id="niche"
                       value={formData.niche}
-                      onChange={(e) => setFormData({ ...formData, niche: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, niche: e.target.value })
+                      }
                       className="pl-9"
                     />
                   </div>
@@ -167,7 +358,9 @@ export default function LeadDetail() {
                   <Input
                     id="service"
                     value={formData.service}
-                    onChange={(e) => setFormData({ ...formData, service: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, service: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -181,7 +374,9 @@ export default function LeadDetail() {
             <CardContent>
               <Textarea
                 value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, notes: e.target.value })
+                }
                 rows={6}
                 placeholder="Add notes about this lead..."
               />
@@ -200,7 +395,7 @@ export default function LeadDetail() {
                 <Switch
                   id="qualified"
                   checked={formData.isQualified}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked) =>
                     setFormData({ ...formData, isQualified: checked })
                   }
                 />
@@ -210,7 +405,7 @@ export default function LeadDetail() {
                 <Switch
                   id="contacted"
                   checked={formData.contacted}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked) =>
                     setFormData({ ...formData, contacted: checked })
                   }
                 />
@@ -223,12 +418,16 @@ export default function LeadDetail() {
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button variant="outline" className="w-full">
+              <Button
+                variant="outline"
+                className="w-full"
+                type="button"
+                onClick={() =>
+                  window.location.assign(`mailto:${formData.email}`)
+                }
+              >
                 <Mail className="mr-2 h-4 w-4" />
                 Send Email
-              </Button>
-              <Button variant="outline" className="w-full">
-                Add to Campaign
               </Button>
             </CardContent>
           </Card>
@@ -242,13 +441,14 @@ export default function LeadDetail() {
                 <span className="text-muted-foreground">Source:</span>
                 <Badge variant="outline">Contact Form</Badge>
               </div>
+              {/* Za sad hard-coded datumi */}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Created:</span>
-                <span>2024-01-15</span>
+                <span>-</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Updated:</span>
-                <span>2024-01-15</span>
+                <span>-</span>
               </div>
             </CardContent>
           </Card>
