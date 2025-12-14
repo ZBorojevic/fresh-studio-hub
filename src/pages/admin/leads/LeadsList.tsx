@@ -1,6 +1,7 @@
 // src/pages/admin/leads/LeadsList.tsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,7 @@ import {
 import { Plus, Search, Upload, Eye, CheckCircle, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/api";
+import { NICHES } from "@/constants/niches";
 
 type Lead = {
   id: number;
@@ -36,6 +38,9 @@ type Lead = {
   service: string | null;
   isQualified: boolean;
   contacted: boolean;
+  contactAttempts: number;
+  isClient: boolean;
+  isDropped: boolean;
 };
 
 type LeadsResponse = {
@@ -52,6 +57,7 @@ export default function LeadsList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [cityFilter, setCityFilter] = useState("all");
   const [qualifiedFilter, setQualifiedFilter] = useState("all");
+  const [nicheFilter, setNicheFilter] = useState("all");
   const [page, setPage] = useState(1);
 
   const [loading, setLoading] = useState(false);
@@ -68,6 +74,7 @@ export default function LeadsList() {
           search: searchQuery,
           city: cityFilter,
           status: qualifiedFilter === "all" ? "all" : qualifiedFilter,
+          niche: nicheFilter,
           page: String(page),
           pageSize: String(pageSize),
         });
@@ -93,7 +100,7 @@ export default function LeadsList() {
     };
 
     fetchLeads();
-  }, [searchQuery, cityFilter, qualifiedFilter, page, toast]);
+  }, [searchQuery, cityFilter, qualifiedFilter, nicheFilter, page, toast]);
 
   const handleImportCSV = () => {
     toast({
@@ -107,6 +114,42 @@ export default function LeadsList() {
   const changePage = (next: number) => {
     if (next < 1 || next > totalPages) return;
     setPage(next);
+  };
+
+  const statusCell = (lead: Lead) => {
+    if (lead.isClient) {
+      return (
+        <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
+          Client
+        </Badge>
+      );
+    }
+    if (lead.isDropped) {
+      return (
+        <Badge variant="destructive">
+          Dropped
+        </Badge>
+      );
+    }
+
+    return (
+      <div className="flex gap-2">
+        {lead.isQualified ? (
+          <Badge variant="default" className="bg-success">
+            <CheckCircle className="mr-1 h-3 w-3" />
+            Qualified
+          </Badge>
+        ) : (
+          <Badge variant="secondary">
+            <XCircle className="mr-1 h-3 w-3" />
+            Unqualified
+          </Badge>
+        )}
+        {lead.contacted && (
+          <Badge variant="outline">Contacted</Badge>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -145,6 +188,8 @@ export default function LeadsList() {
                 className="pl-9"
               />
             </div>
+
+            {/* City filter */}
             <Select
               value={cityFilter}
               onValueChange={(val) => {
@@ -162,6 +207,8 @@ export default function LeadsList() {
                 <SelectItem value="Rijeka">Rijeka</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Qualified filter */}
             <Select
               value={qualifiedFilter}
               onValueChange={(val) => {
@@ -178,6 +225,27 @@ export default function LeadsList() {
                 <SelectItem value="unqualified">Unqualified</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Niche filter */}
+            <Select
+              value={nicheFilter}
+              onValueChange={(val) => {
+                setPage(1);
+                setNicheFilter(val);
+              }}
+            >
+              <SelectTrigger className="w-full md:w-[220px]">
+                <SelectValue placeholder="Filter by niche" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Niches</SelectItem>
+                {NICHES.map((niche) => (
+                  <SelectItem key={niche} value={niche}>
+                    {niche}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="rounded-md border overflow-x-auto">
@@ -188,6 +256,7 @@ export default function LeadsList() {
                   <TableHead>Contact Person</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>City</TableHead>
+                  <TableHead>Niche</TableHead>
                   <TableHead>Service</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -195,7 +264,10 @@ export default function LeadsList() {
               </TableHeader>
               <TableBody>
                 {leads.map((lead) => (
-                  <TableRow key={lead.id}>
+                  <TableRow
+                    key={lead.id}
+                    className={lead.isDropped ? "bg-destructive/5" : ""}
+                  >
                     <TableCell className="font-medium">
                       {lead.companyName}
                     </TableCell>
@@ -204,25 +276,9 @@ export default function LeadsList() {
                     </TableCell>
                     <TableCell>{lead.email}</TableCell>
                     <TableCell>{lead.city}</TableCell>
+                    <TableCell>{lead.niche}</TableCell>
                     <TableCell>{lead.service}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        {lead.isQualified ? (
-                          <Badge variant="default" className="bg-success">
-                            <CheckCircle className="mr-1 h-3 w-3" />
-                            Qualified
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">
-                            <XCircle className="mr-1 h-3 w-3" />
-                            Unqualified
-                          </Badge>
-                        )}
-                        {lead.contacted && (
-                          <Badge variant="outline">Contacted</Badge>
-                        )}
-                      </div>
-                    </TableCell>
+                    <TableCell>{statusCell(lead)}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="ghost"
@@ -237,7 +293,7 @@ export default function LeadsList() {
 
                 {!loading && leads.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-6">
+                    <TableCell colSpan={8} className="text-center py-6">
                       No leads found.
                     </TableCell>
                   </TableRow>

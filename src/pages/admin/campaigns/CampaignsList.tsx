@@ -1,5 +1,4 @@
-// src/pages/admin/campaigns/CampaignsList.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,11 +13,13 @@ import {
 } from "@/components/ui/table";
 import { Plus, FileText, Mail, Pencil } from "lucide-react";
 
-import CampaignDialog from "@/components/CampaignDialog";
-import TemplateDialog from "@/components/TemplateDialog";
+import CampaignDialog, {
+  CampaignForm,
+  CampaignStatus,
+  TemplateOption,
+} from "@/components/CampaignDialog";
+import TemplateDialog, { TemplateForm } from "@/components/TemplateDialog";
 import { useToast } from "@/hooks/use-toast";
-
-type CampaignStatus = "draft" | "scheduled" | "sending" | "sent" | "cancelled";
 
 type Campaign = {
   id: number;
@@ -27,18 +28,23 @@ type Campaign = {
   totalRecipients: number;
   sentCount: number;
   failedCount: number;
+
+  templateId: number | null;
+
+  segmentCity: string;
+  segmentStatus: "all" | "qualified" | "unqualified";
+  segmentNiche: string;
+  segmentContactAttempt: number | null;
+
   scheduledFor?: string | null;
   sentAt?: string | null;
 };
 
-// lokalni tip za template (kompatibilan s TemplateDialog propsima)
-type EmailTemplate = {
-  id?: number;
-  name: string;
-  subject: string;
-  htmlBody: string;
-  isActive?: boolean;
+// ✅ Ovo je tip koji dolazi s GET /templates (može imati više polja, bitno je da ima id)
+type EmailTemplate = TemplateForm & {
+  id: number; // ✅ obavezno jer iz baze uvijek dolazi
   updatedAt: string;
+  niche?: string | null; // ako ga imaš u bazi/responseu
 };
 
 export default function CampaignsList() {
@@ -50,6 +56,8 @@ export default function CampaignsList() {
   const [campaignDialogOpen, setCampaignDialogOpen] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
 
+  const [editingCampaignچہ
+  ] = useState<Campaign | null>(null);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(
     null
@@ -70,11 +78,9 @@ export default function CampaignsList() {
       sent: "default",
       scheduled: "secondary",
       draft: "outline",
-      sending: "secondary",
-      cancelled: "outline",
     };
 
-    return <Badge variant={variants[status]}>{status}</Badge>;
+    return <Badge variant={variants[status] || "outline"}>{status}</Badge>;
   };
 
   // -----------------------------------------------------------------------------
@@ -127,18 +133,38 @@ export default function CampaignsList() {
       setError("Nema aktivne prijave.");
       return;
     }
-
     fetchCampaigns();
     fetchTemplates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ✅ Ovo je ono što CampaignDialog očekuje: TemplateOption[]
+  const templateOptions: TemplateOption[] = useMemo(() => {
+    return templates.map((t) => ({
+      id: t.id,
+      name: t.name,
+      subject: t.subject,
+      niche: (t as any).niche ?? null,
+    }));
+  }, [templates]);
+
   // -----------------------------------------------------------------------------
   // SAVE HANDLERS
   // -----------------------------------------------------------------------------
-
-  const handleSaveCampaign = async (payload: any) => {
+  const handleSaveCampaign = async (payload: CampaignForm) => {
     if (!token) return;
+
+    const apiPayload = {
+      id: payload.id,
+      name: payload.name,
+      status: payload.status,
+      templateId: payload.templateId,
+      segmentCity: payload.segmentCity,
+      segmentStatus: payload.segmentStatus,
+      segmentNiche: payload.segmentNiche,
+      segmentContactAttempt: payload.segmentContactAttempt,
+      scheduledFor: payload.scheduledFor || null,
+    };
 
     try {
       const res = await fetch("/api/campaigns", {
@@ -147,7 +173,7 @@ export default function CampaignsList() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(apiPayload),
       });
 
       const data = await res.json();
@@ -169,7 +195,7 @@ export default function CampaignsList() {
     }
   };
 
-  const handleSaveTemplate = async (payload: EmailTemplate) => {
+  const handleSaveTemplate = async (payload: TemplateForm) => {
     if (!token) return;
 
     try {
@@ -179,7 +205,7 @@ export default function CampaignsList() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload), // šalje name + subject + htmlBody (+ opcionalni id, isActive)
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -234,7 +260,6 @@ export default function CampaignsList() {
   // -----------------------------------------------------------------------------
   // UI
   // -----------------------------------------------------------------------------
-
   return (
     <div className="space-y-6">
       <div>
@@ -305,7 +330,9 @@ export default function CampaignsList() {
                         <TableCell>
                           {c.sentCount > 0 ? (
                             <>
-                              <span className="text-success">{c.sentCount}</span>
+                              <span className="text-success">
+                                {c.sentCount}
+                              </span>
                               {c.failedCount > 0 && (
                                 <span className="text-destructive">
                                   {" "}
@@ -331,7 +358,8 @@ export default function CampaignsList() {
                             <Pencil className="h-4 w-4" />
                           </Button>
 
-                          {(c.status === "draft" || c.status === "scheduled") && (
+                          {(c.status === "draft" ||
+                            c.status === "scheduled") && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -376,6 +404,7 @@ export default function CampaignsList() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Subject</TableHead>
+                    <TableHead>Niche</TableHead>
                     <TableHead>Updated</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -384,7 +413,7 @@ export default function CampaignsList() {
                 <TableBody>
                   {templates.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8">
+                      <TableCell colSpan={5} className="text-center py-8">
                         No templates yet
                       </TableCell>
                     </TableRow>
@@ -393,6 +422,7 @@ export default function CampaignsList() {
                       <TableRow key={t.id}>
                         <TableCell>{t.name}</TableCell>
                         <TableCell>{t.subject}</TableCell>
+                        <TableCell>{(t as any).niche || "-"}</TableCell>
                         <TableCell>{t.updatedAt}</TableCell>
 
                         <TableCell className="text-right">
@@ -421,7 +451,22 @@ export default function CampaignsList() {
       <CampaignDialog
         open={campaignDialogOpen}
         onOpenChange={setCampaignDialogOpen}
-        campaign={editingCampaign}
+        campaign={
+          editingCampaign
+            ? {
+                id: editingCampaign.id,
+                name: editingCampaign.name,
+                status: editingCampaign.status,
+                templateId: editingCampaign.templateId,
+                segmentCity: editingCampaign.segmentCity,
+                segmentStatus: editingCampaign.segmentStatus,
+                segmentNiche: editingCampaign.segmentNiche,
+                segmentContactAttempt: editingCampaign.segmentContactAttempt,
+                scheduledFor: editingCampaign.scheduledFor || "",
+              }
+            : null
+        }
+        templates={templateOptions} // ✅ FIX: šaljemo TemplateOption[]
         onSave={handleSaveCampaign}
       />
 

@@ -1,6 +1,7 @@
 // src/pages/admin/leads/LeadDetail.tsx
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +9,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft,
@@ -19,6 +28,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { NICHES } from "@/constants/niches";
 
 type LeadForm = {
   companyName: string;
@@ -34,6 +44,10 @@ type LeadForm = {
   isQualified: boolean;
   contacted: boolean;
   notes: string;
+  // nova polja
+  contactAttempts: number;
+  isClient: boolean;
+  isDropped: boolean;
 };
 
 const EMPTY_FORM: LeadForm = {
@@ -50,6 +64,9 @@ const EMPTY_FORM: LeadForm = {
   isQualified: false,
   contacted: false,
   notes: "",
+  contactAttempts: 0,
+  isClient: false,
+  isDropped: false,
 };
 
 export default function LeadDetail() {
@@ -82,7 +99,7 @@ export default function LeadDetail() {
           companyName: data.companyName ?? "",
           firstName: data.firstName ?? "",
           lastName: data.lastName ?? "",
-          title: "", // zasad nemamo u bazi
+          title: data.title ?? "",
           email: data.email ?? "",
           tel: data.tel ?? "",
           website: data.website ?? "",
@@ -92,6 +109,9 @@ export default function LeadDetail() {
           isQualified: !!data.isQualified,
           contacted: !!data.contacted,
           notes: data.notes ?? "",
+          contactAttempts: data.contactAttempts ?? 0,
+          isClient: !!data.isClient,
+          isDropped: !!data.isDropped,
         });
       } catch (err) {
         console.error(err);
@@ -116,6 +136,7 @@ export default function LeadDetail() {
         companyName: formData.companyName || null,
         firstName: formData.firstName || null,
         lastName: formData.lastName || null,
+        title: formData.title || null,
         email: formData.email || null,
         tel: formData.tel || null,
         website: formData.website || null,
@@ -125,6 +146,9 @@ export default function LeadDetail() {
         isQualified: formData.isQualified,
         contacted: formData.contacted,
         notes: formData.notes || null,
+        contactAttempts: formData.contactAttempts ?? 0,
+        isClient: formData.isClient,
+        isDropped: formData.isDropped,
       };
 
       const res = await apiFetch(isNew ? "/leads" : `/leads/${id}`, {
@@ -188,6 +212,24 @@ export default function LeadDetail() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleClient = (checked: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      isClient: checked,
+      // ako postane client → više nije dropped
+      isDropped: checked ? false : prev.isDropped,
+    }));
+  };
+
+  const toggleDropped = (checked: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      isDropped: checked,
+      // ako je dropped → nije client
+      isClient: checked ? false : prev.isClient,
+    }));
   };
 
   return (
@@ -339,20 +381,31 @@ export default function LeadDetail() {
                     />
                   </div>
                 </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="niche">Niche</Label>
                   <div className="relative">
                     <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="niche"
+                    <Select
                       value={formData.niche}
-                      onChange={(e) =>
-                        setFormData({ ...formData, niche: e.target.value })
+                      onValueChange={(v) =>
+                        setFormData({ ...formData, niche: v })
                       }
-                      className="pl-9"
-                    />
+                    >
+                      <SelectTrigger className="pl-9">
+                        <SelectValue placeholder="Choose niche" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {NICHES.map((niche) => (
+                          <SelectItem key={niche} value={niche}>
+                            {niche}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="service">Service</Label>
                   <Input
@@ -410,6 +463,29 @@ export default function LeadDetail() {
                   }
                 />
               </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="clientClosed">Client closed</Label>
+                <Switch
+                  id="clientClosed"
+                  checked={formData.isClient}
+                  onCheckedChange={toggleClient}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="dropped">Dropped (give up)</Label>
+                <Switch
+                  id="dropped"
+                  checked={formData.isDropped}
+                  onCheckedChange={toggleDropped}
+                />
+              </div>
+
+              <div className="pt-2 text-sm text-muted-foreground flex items-center justify-between">
+                <span>Contact attempts</span>
+                <Badge variant="outline">
+                  {formData.contactAttempts ?? 0}
+                </Badge>
+              </div>
             </CardContent>
           </Card>
 
@@ -423,8 +499,9 @@ export default function LeadDetail() {
                 className="w-full"
                 type="button"
                 onClick={() =>
-                  window.location.assign(`mailto:${formData.email}`)
+                  formData.email && window.location.assign(`mailto:${formData.email}`)
                 }
+                disabled={!formData.email}
               >
                 <Mail className="mr-2 h-4 w-4" />
                 Send Email

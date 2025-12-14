@@ -1,3 +1,4 @@
+// src/components/TemplateDialog.tsx
 import { useEffect, useState } from "react";
 import {
   Dialog,
@@ -10,12 +11,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { NICHES } from "@/constants/niches";
 
 export type TemplateForm = {
   id?: number;
   name: string;
   subject: string;
   htmlBody: string;
+  niche?: string | null;
   isActive?: boolean;
 };
 
@@ -35,6 +45,7 @@ export default function TemplateDialog({
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
   const [htmlBody, setHtmlBody] = useState("");
+  const [niche, setNiche] = useState<string | "all">("all");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -42,10 +53,12 @@ export default function TemplateDialog({
       setName(template.name ?? "");
       setSubject(template.subject ?? "");
       setHtmlBody(template.htmlBody ?? "");
+      setNiche((template.niche as any) ?? "all");
     } else {
       setName("");
       setSubject("");
       setHtmlBody("");
+      setNiche("all");
     }
   }, [template, open]);
 
@@ -60,6 +73,7 @@ export default function TemplateDialog({
         name: name.trim(),
         subject: subject.trim(),
         htmlBody: htmlBody.trim(),
+        niche: niche === "all" ? null : niche,
         isActive: template?.isActive ?? true,
       });
     } finally {
@@ -110,6 +124,24 @@ export default function TemplateDialog({
             />
           </div>
 
+          {/* Niche */}
+          <div className="space-y-2">
+            <Label htmlFor="template-niche">Niche (optional)</Label>
+            <Select value={niche} onValueChange={setNiche}>
+              <SelectTrigger id="template-niche">
+                <SelectValue placeholder="All niches" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Niches</SelectItem>
+                {NICHES.map((n) => (
+                  <SelectItem key={n} value={n}>
+                    {n}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* HTML body */}
           <div className="space-y-2">
             <Label htmlFor="template-html">HTML Body</Label>
@@ -129,8 +161,7 @@ export default function TemplateDialog({
             <p className="text-xs text-muted-foreground">
               Savjet: drži HTML jednostavnim (inline stilovi, bez external CSS).
               Placeholderi će se zamijeniti podacima o leadu (npr.{" "}
-              <code>{"{{firstName}}"}</code>,{" "}
-              <code>{"{{companyName}}"}</code>).
+              <code>{"{{firstName}}"}</code>, <code>{"{{companyName}}"}</code>).
             </p>
           </div>
 
