@@ -1,5 +1,4 @@
-// src/pages/admin/Dashboard.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -11,7 +10,6 @@ import { Users, Mail, Star, TrendingUp, CheckCircle2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 
-// Types for backend response
 type OverviewResponse = {
   totals: {
     totalLeads: number;
@@ -92,9 +90,16 @@ export default function Dashboard() {
   const emails = data?.emails;
   const activity = data?.activity;
 
+  const weeklyTarget = 50;
+  const newLeads7d = totals?.newLeads7d ?? 0;
+
+  const targetPct = useMemo(() => {
+    const pct = (newLeads7d / weeklyTarget) * 100;
+    return Math.max(0, Math.min(100, pct));
+  }, [newLeads7d]);
+
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">
@@ -110,7 +115,6 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* Metrics Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* New Leads */}
         <Card>
@@ -122,11 +126,28 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {loading ? "…" : totals?.newLeads7d ?? 0}
+              {loading ? "…" : newLeads7d}
             </div>
+
             <p className="text-xs text-muted-foreground">
               Total leads: {totals?.totalLeads ?? 0}
             </p>
+
+            {/* ✅ Weekly target */}
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Weekly target</span>
+                <span>
+                  {newLeads7d}/{weeklyTarget} ({Math.round(targetPct)}%)
+                </span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full bg-primary"
+                  style={{ width: `${targetPct}%` }}
+                />
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -185,9 +206,8 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Lists */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {/* Recent Leads */}
+        {/* Latest Leads */}
         <Card>
           <CardHeader>
             <CardTitle>Latest Leads</CardTitle>
@@ -229,7 +249,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Recent Clients */}
+        {/* Latest Clients */}
         <Card>
           <CardHeader>
             <CardTitle>Latest Clients</CardTitle>
@@ -314,8 +334,12 @@ export default function Dashboard() {
                         Client
                       </Badge>
                     )}
-                    {lead.isQualified && <Badge variant="outline">Qualified</Badge>}
-                    {lead.contacted && <Badge variant="outline">Contacted</Badge>}
+                    {lead.isQualified && (
+                      <Badge variant="outline">Qualified</Badge>
+                    )}
+                    {lead.contacted && (
+                      <Badge variant="outline">Contacted</Badge>
+                    )}
                   </div>
                 </div>
               ))}

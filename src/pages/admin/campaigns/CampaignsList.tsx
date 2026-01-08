@@ -21,6 +21,10 @@ import CampaignDialog, {
 import TemplateDialog, { TemplateForm } from "@/components/TemplateDialog";
 import { useToast } from "@/hooks/use-toast";
 
+/* -------------------------------------------------------------------------- */
+/* TYPES                                                                      */
+/* -------------------------------------------------------------------------- */
+
 type Campaign = {
   id: number;
   name: string;
@@ -40,15 +44,19 @@ type Campaign = {
   sentAt?: string | null;
 };
 
-// ✅ Ovo je tip koji dolazi s GET /templates (može imati više polja, bitno je da ima id)
 type EmailTemplate = TemplateForm & {
-  id: number; // ✅ obavezno jer iz baze uvijek dolazi
+  id: number;
   updatedAt: string;
-  niche?: string | null; // ako ga imaš u bazi/responseu
+  niche?: string | null;
 };
+
+/* -------------------------------------------------------------------------- */
+/* COMPONENT                                                                  */
+/* -------------------------------------------------------------------------- */
 
 export default function CampaignsList() {
   const { toast } = useToast();
+  const token = localStorage.getItem("fs_auth_token");
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
@@ -56,20 +64,18 @@ export default function CampaignsList() {
   const [campaignDialogOpen, setCampaignDialogOpen] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
 
-  const [editingCampaignچہ
-  ] = useState<Campaign | null>(null);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
-  const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(
-    null
-  );
+  const [editingTemplate, setEditingTemplate] =
+    useState<EmailTemplate | null>(null);
 
   const [loadingCampaigns, setLoadingCampaigns] = useState(false);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const token = localStorage.getItem("fs_auth_token");
+  /* -------------------------------------------------------------------------- */
+  /* HELPERS                                                                    */
+  /* -------------------------------------------------------------------------- */
 
-  // Badge styling
   const getStatusBadge = (status: CampaignStatus) => {
     const variants: Record<
       CampaignStatus,
@@ -80,12 +86,27 @@ export default function CampaignsList() {
       draft: "outline",
     };
 
-    return <Badge variant={variants[status] || "outline"}>{status}</Badge>;
+    return <Badge variant={variants[status]}>{status}</Badge>;
   };
 
-  // -----------------------------------------------------------------------------
-  // FETCH DATA
-  // -----------------------------------------------------------------------------
+  const formatDateTime = (value?: string | null) => {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+
+  return new Intl.DateTimeFormat("hr-HR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+};
+
+  /* -------------------------------------------------------------------------- */
+  /* FETCH DATA                                                                 */
+  /* -------------------------------------------------------------------------- */
+
   const fetchCampaigns = async () => {
     if (!token) return;
     setLoadingCampaigns(true);
@@ -138,33 +159,25 @@ export default function CampaignsList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ Ovo je ono što CampaignDialog očekuje: TemplateOption[]
+  /* -------------------------------------------------------------------------- */
+  /* TEMPLATE OPTIONS                                                           */
+  /* -------------------------------------------------------------------------- */
+
   const templateOptions: TemplateOption[] = useMemo(() => {
     return templates.map((t) => ({
       id: t.id,
       name: t.name,
       subject: t.subject,
-      niche: (t as any).niche ?? null,
+      niche: t.niche ?? null,
     }));
   }, [templates]);
 
-  // -----------------------------------------------------------------------------
-  // SAVE HANDLERS
-  // -----------------------------------------------------------------------------
+  /* -------------------------------------------------------------------------- */
+  /* SAVE HANDLERS                                                              */
+  /* -------------------------------------------------------------------------- */
+
   const handleSaveCampaign = async (payload: CampaignForm) => {
     if (!token) return;
-
-    const apiPayload = {
-      id: payload.id,
-      name: payload.name,
-      status: payload.status,
-      templateId: payload.templateId,
-      segmentCity: payload.segmentCity,
-      segmentStatus: payload.segmentStatus,
-      segmentNiche: payload.segmentNiche,
-      segmentContactAttempt: payload.segmentContactAttempt,
-      scheduledFor: payload.scheduledFor || null,
-    };
 
     try {
       const res = await fetch("/api/campaigns", {
@@ -173,7 +186,7 @@ export default function CampaignsList() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(apiPayload),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -227,9 +240,10 @@ export default function CampaignsList() {
     }
   };
 
-  // -----------------------------------------------------------------------------
-  // SEND CAMPAIGN
-  // -----------------------------------------------------------------------------
+  /* -------------------------------------------------------------------------- */
+  /* SEND CAMPAIGN                                                              */
+  /* -------------------------------------------------------------------------- */
+
   const handleSendNow = async (campaign: Campaign) => {
     if (!token) return;
 
@@ -257,9 +271,10 @@ export default function CampaignsList() {
     }
   };
 
-  // -----------------------------------------------------------------------------
-  // UI
-  // -----------------------------------------------------------------------------
+  /* -------------------------------------------------------------------------- */
+  /* UI                                                                         */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div className="space-y-6">
       <div>
@@ -273,18 +288,17 @@ export default function CampaignsList() {
 
       <Tabs defaultValue="campaigns" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="campaigns" className="flex items-center gap-2">
-            <Mail className="h-4 w-4" /> Campaigns
+          <TabsTrigger value="campaigns">
+            <Mail className="mr-2 h-4 w-4" /> Campaigns
           </TabsTrigger>
-
-          <TabsTrigger value="templates" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" /> Templates
+          <TabsTrigger value="templates">
+            <FileText className="mr-2 h-4 w-4" /> Templates
           </TabsTrigger>
         </TabsList>
 
-        {/* CAMPAIGNS TAB */}
-        <TabsContent value="campaigns" className="space-y-4">
-          <div className="flex justify-end gap-2">
+        {/* CAMPAIGNS */}
+        <TabsContent value="campaigns">
+          <div className="flex justify-end gap-2 mb-4">
             <Button variant="outline" onClick={fetchCampaigns}>
               Refresh
             </Button>
@@ -328,25 +342,10 @@ export default function CampaignsList() {
                         <TableCell>{getStatusBadge(c.status)}</TableCell>
                         <TableCell>{c.totalRecipients}</TableCell>
                         <TableCell>
-                          {c.sentCount > 0 ? (
-                            <>
-                              <span className="text-success">
-                                {c.sentCount}
-                              </span>
-                              {c.failedCount > 0 && (
-                                <span className="text-destructive">
-                                  {" "}
-                                  / {c.failedCount}
-                                </span>
-                              )}
-                            </>
-                          ) : (
-                            "-"
-                          )}
+                          {c.sentCount || "-"} / {c.failedCount || "-"}
                         </TableCell>
-                        <TableCell>{c.sentAt || c.scheduledFor || "-"}</TableCell>
-
-                        <TableCell className="text-right space-x-2">
+                        <TableCell>{formatDateTime(c.sentAt ?? c.scheduledFor)}</TableCell>
+                        <TableCell className="text-right">
                           <Button
                             variant="ghost"
                             size="icon"
@@ -357,12 +356,11 @@ export default function CampaignsList() {
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
-
                           {(c.status === "draft" ||
                             c.status === "scheduled") && (
                             <Button
-                              variant="outline"
                               size="sm"
+                              variant="outline"
                               onClick={() => handleSendNow(c)}
                             >
                               Send now
@@ -378,9 +376,9 @@ export default function CampaignsList() {
           </Card>
         </TabsContent>
 
-        {/* TEMPLATES TAB */}
-        <TabsContent value="templates" className="space-y-4">
-          <div className="flex justify-end gap-2">
+        {/* TEMPLATES */}
+        <TabsContent value="templates">
+          <div className="flex justify-end gap-2 mb-4">
             <Button variant="outline" onClick={fetchTemplates}>
               Refresh
             </Button>
@@ -390,15 +388,12 @@ export default function CampaignsList() {
                 setTemplateDialogOpen(true);
               }}
             >
-              <Plus className="mr-2 h-4 w-4" />
-              New Template
+              <Plus className="mr-2 h-4 w-4" /> New Template
             </Button>
           </div>
 
           <Card>
             <CardContent className="pt-6">
-              {loadingTemplates && <p>Loading templates...</p>}
-
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -411,35 +406,26 @@ export default function CampaignsList() {
                 </TableHeader>
 
                 <TableBody>
-                  {templates.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8">
-                        No templates yet
+                  {templates.map((t) => (
+                    <TableRow key={t.id}>
+                      <TableCell>{t.name}</TableCell>
+                      <TableCell>{t.subject}</TableCell>
+                      <TableCell>{t.niche || "-"}</TableCell>
+                      <TableCell>{t.updatedAt}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setEditingTemplate(t);
+                            setTemplateDialogOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    templates.map((t) => (
-                      <TableRow key={t.id}>
-                        <TableCell>{t.name}</TableCell>
-                        <TableCell>{t.subject}</TableCell>
-                        <TableCell>{(t as any).niche || "-"}</TableCell>
-                        <TableCell>{t.updatedAt}</TableCell>
-
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setEditingTemplate(t);
-                              setTemplateDialogOpen(true);
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                  ))}
                 </TableBody>
               </Table>
             </CardContent>
@@ -447,7 +433,7 @@ export default function CampaignsList() {
         </TabsContent>
       </Tabs>
 
-      {/* Dialogs */}
+      {/* DIALOGS */}
       <CampaignDialog
         open={campaignDialogOpen}
         onOpenChange={setCampaignDialogOpen}
@@ -461,13 +447,15 @@ export default function CampaignsList() {
                 segmentCity: editingCampaign.segmentCity,
                 segmentStatus: editingCampaign.segmentStatus,
                 segmentNiche: editingCampaign.segmentNiche,
-                segmentContactAttempt: editingCampaign.segmentContactAttempt,
+                segmentContactAttempt:
+                  editingCampaign.segmentContactAttempt,
                 scheduledFor: editingCampaign.scheduledFor || "",
               }
             : null
         }
-        templates={templateOptions} // ✅ FIX: šaljemo TemplateOption[]
+        templates={templateOptions}
         onSave={handleSaveCampaign}
+        onDeleted={fetchCampaigns}
       />
 
       <TemplateDialog
@@ -475,7 +463,9 @@ export default function CampaignsList() {
         onOpenChange={setTemplateDialogOpen}
         template={editingTemplate}
         onSave={handleSaveTemplate}
+        onDeleted={fetchTemplates}
       />
+
     </div>
   );
 }

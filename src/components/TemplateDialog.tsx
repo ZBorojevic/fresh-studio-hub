@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { NICHES } from "@/constants/niches";
+import { apiFetch } from "@/lib/api";
 
 export type TemplateForm = {
   id?: number;
@@ -34,6 +35,7 @@ interface TemplateDialogProps {
   onOpenChange: (open: boolean) => void;
   template: TemplateForm | null;
   onSave: (template: TemplateForm) => void;
+  onDeleted?: () => void;
 }
 
 export default function TemplateDialog({
@@ -41,12 +43,14 @@ export default function TemplateDialog({
   onOpenChange,
   template,
   onSave,
+  onDeleted,
 }: TemplateDialogProps) {
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
   const [htmlBody, setHtmlBody] = useState("");
   const [niche, setNiche] = useState<string | "all">("all");
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (template) {
@@ -81,8 +85,35 @@ export default function TemplateDialog({
     }
   };
 
+  const handleDelete = async () => {
+    if (!template?.id) return;
+    if (!window.confirm("Sigurno obrisati ovaj template?")) return;
+
+    try {
+      setDeleting(true);
+
+      const res = await apiFetch(`/templates/${template.id}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(data?.error ?? "Failed to delete template");
+      }
+
+      onOpenChange(false);
+      onDeleted?.();
+    } catch (err: any) {
+      console.error("Delete template error:", err);
+      alert(err?.message ?? "Greška pri brisanju templatea.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleClose = () => {
-    if (submitting) return;
+    if (submitting || deleting) return;
     onOpenChange(false);
   };
 
@@ -94,14 +125,12 @@ export default function TemplateDialog({
         <DialogHeader>
           <DialogTitle>{dialogTitle}</DialogTitle>
           <DialogDescription>
-            Define email subject i HTML sadržaj. Možeš koristiti placeholdere
-            poput <code>{"{{firstName}}"}</code>,{" "}
-            <code>{"{{companyName}}"}</code>, itd.
+            Define email subject i HTML sadržaj. Možeš koristiti placeholdere poput{" "}
+            <code>{"{{firstName}}"}</code>, <code>{"{{companyName}}"}</code>, itd.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Name */}
           <div className="space-y-2">
             <Label htmlFor="template-name">Template Name</Label>
             <Input
@@ -109,10 +138,10 @@ export default function TemplateDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
+              disabled={submitting || deleting}
             />
           </div>
 
-          {/* Subject */}
           <div className="space-y-2">
             <Label htmlFor="template-subject">Email Subject</Label>
             <Input
@@ -121,14 +150,14 @@ export default function TemplateDialog({
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               required
+              disabled={submitting || deleting}
             />
           </div>
 
-          {/* Niche */}
           <div className="space-y-2">
             <Label htmlFor="template-niche">Niche (optional)</Label>
             <Select value={niche} onValueChange={setNiche}>
-              <SelectTrigger id="template-niche">
+              <SelectTrigger id="template-niche" disabled={submitting || deleting}>
                 <SelectValue placeholder="All niches" />
               </SelectTrigger>
               <SelectContent>
@@ -142,7 +171,6 @@ export default function TemplateDialog({
             </Select>
           </div>
 
-          {/* HTML body */}
           <div className="space-y-2">
             <Label htmlFor="template-html">HTML Body</Label>
             <Textarea
@@ -152,32 +180,37 @@ export default function TemplateDialog({
               rows={12}
               required
               className="font-mono text-sm"
-              placeholder={`<div style="font-family: Arial, sans-serif;">
-  <h2>Pozdrav {{firstName}} 👋</h2>
-  <p>Ovo je testni email iz Fresh Studio huba.</p>
-  <p>Možeš urediti HTML po želji.</p>
-</div>`}
+              disabled={submitting || deleting}
             />
-            <p className="text-xs text-muted-foreground">
-              Savjet: drži HTML jednostavnim (inline stilovi, bez external CSS).
-              Placeholderi će se zamijeniti podacima o leadu (npr.{" "}
-              <code>{"{{firstName}}"}</code>, <code>{"{{companyName}}"}</code>).
-            </p>
           </div>
 
-          {/* Buttons */}
-          <div className="flex justify-end gap-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={submitting}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? "Saving..." : "Save"}
-            </Button>
+          <div className="flex items-center justify-between pt-4">
+            {template?.id ? (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting || submitting}
+                className="text-sm text-red-600 hover:underline hover:text-red-700 disabled:opacity-50"
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            ) : (
+              <span />
+            )}
+
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClose}
+                disabled={submitting || deleting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={submitting || deleting}>
+                {submitting ? "Saving..." : "Save"}
+              </Button>
+            </div>
           </div>
         </form>
       </DialogContent>

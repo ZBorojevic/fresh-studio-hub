@@ -9,6 +9,15 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    // Dev proxy so frontend `apiFetch('/...')` calls reach the local backend
+    // without extra nginx setup during development.
+    proxy: {
+      "/api": {
+        target: "http://127.0.0.1:4100",
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   plugins: [
     react(), 

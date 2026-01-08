@@ -79,7 +79,21 @@ export default function LeadsList() {
           pageSize: String(pageSize),
         });
 
+        const token = localStorage.getItem("fs_auth_token");
+        if (!token) {
+          // no token → redirect to login
+          navigate("/login");
+          return;
+        }
+
         const res = await apiFetch(`/leads?${params.toString()}`);
+        if (res.status === 401) {
+          // token invalid/expired — clear and force login
+          localStorage.removeItem("fs_auth_token");
+          navigate("/login");
+          return;
+        }
+
         if (!res.ok) {
           throw new Error("Failed to fetch leads");
         }
@@ -117,40 +131,44 @@ export default function LeadsList() {
   };
 
   const statusCell = (lead: Lead) => {
-    if (lead.isClient) {
-      return (
-        <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
-          Client
-        </Badge>
-      );
-    }
-    if (lead.isDropped) {
-      return (
-        <Badge variant="destructive">
-          Dropped
-        </Badge>
-      );
-    }
-
+  if (lead.isClient) {
     return (
-      <div className="flex gap-2">
-        {lead.isQualified ? (
-          <Badge variant="default" className="bg-success">
-            <CheckCircle className="mr-1 h-3 w-3" />
-            Qualified
-          </Badge>
-        ) : (
-          <Badge variant="secondary">
-            <XCircle className="mr-1 h-3 w-3" />
-            Unqualified
-          </Badge>
-        )}
-        {lead.contacted && (
-          <Badge variant="outline">Contacted</Badge>
-        )}
-      </div>
+      <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
+        Client
+      </Badge>
     );
-  };
+  }
+
+  if (lead.isDropped) {
+    return (
+      <Badge className="bg-red-600 text-white hover:bg-red-600">
+        Dropped
+      </Badge>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {lead.isQualified ? (
+        <Badge className="bg-blue-600 text-white hover:bg-blue-600">
+          <CheckCircle className="mr-1 h-3 w-3" />
+          Qualified
+        </Badge>
+      ) : (
+        <Badge className="bg-slate-200 text-slate-900 hover:bg-slate-200">
+          <XCircle className="mr-1 h-3 w-3" />
+          Unqualified
+        </Badge>
+      )}
+
+      {lead.contacted && (
+        <Badge variant="outline" className="border-slate-300 text-slate-700">
+          Contacted
+        </Badge>
+      )}
+    </div>
+  );
+};
 
   return (
     <div className="space-y-6">

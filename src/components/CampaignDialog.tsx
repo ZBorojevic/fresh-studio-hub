@@ -1,3 +1,4 @@
+// src/components/CampaignDialog.tsx
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -17,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { NICHES } from "@/constants/niches";
+import { apiFetch } from "@/lib/api";
 
 export type CampaignStatus = "draft" | "scheduled" | "sent";
 
@@ -26,11 +28,11 @@ export interface CampaignForm {
   status: CampaignStatus;
   templateId: number | null;
 
-  segmentCity: string; // "all" ili grad
+  segmentCity: string;
   segmentStatus: "all" | "qualified" | "unqualified";
-  segmentNiche: string; // "all" ili konkretna niša
-  segmentContactAttempt: number | null; // null = svi, 0..3 attempt
-  scheduledFor?: string; // datetime-local string ili ""
+  segmentNiche: string;
+  segmentContactAttempt: number | null;
+  scheduledFor?: string;
 }
 
 export interface TemplateOption {
@@ -46,6 +48,7 @@ interface CampaignDialogProps {
   campaign: CampaignForm | null;
   templates: TemplateOption[];
   onSave: (campaign: CampaignForm) => void;
+  onDeleted?: () => void;
 }
 
 const EMPTY_FORM: CampaignForm = {
@@ -65,8 +68,10 @@ export default function CampaignDialog({
   campaign,
   templates,
   onSave,
+  onDeleted,
 }: CampaignDialogProps) {
   const [formData, setFormData] = useState<CampaignForm>(EMPTY_FORM);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (campaign) {
@@ -103,6 +108,30 @@ export default function CampaignDialog({
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
 
+  const handleDelete = async () => {
+    if (!campaign?.id) return;
+    if (!window.confirm("Sigurno obrisati ovu kampanju?")) return;
+
+    try {
+      setDeleting(true);
+
+      const res = await apiFetch(`/campaigns/${campaign.id}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error ?? "Failed to delete campaign");
+
+      onOpenChange(false);
+      onDeleted?.();
+    } catch (err: any) {
+      console.error("Delete campaign error:", err);
+      alert(err?.message ?? "Greška pri brisanju kampanje.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
@@ -111,7 +140,6 @@ export default function CampaignDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 pt-2">
-          {/* Name */}
           <div className="space-y-2">
             <Label htmlFor="campaign-name">Campaign Name</Label>
             <Input
@@ -122,7 +150,6 @@ export default function CampaignDialog({
             />
           </div>
 
-          {/* Template */}
           <div className="space-y-2">
             <Label>Template</Label>
             <Select
@@ -145,15 +172,12 @@ export default function CampaignDialog({
             </Select>
           </div>
 
-          {/* Status & schedule */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Status</Label>
               <Select
                 value={formData.status}
-                onValueChange={(val: CampaignStatus) =>
-                  handleChange("status", val)
-                }
+                onValueChange={(val: CampaignStatus) => handleChange("status", val)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -172,16 +196,12 @@ export default function CampaignDialog({
                 id="scheduledFor"
                 type="datetime-local"
                 value={formData.scheduledFor || ""}
-                onChange={(e) =>
-                  handleChange("scheduledFor", e.target.value || "")
-                }
+                onChange={(e) => handleChange("scheduledFor", e.target.value || "")}
               />
             </div>
           </div>
 
-          {/* Segmentation */}
           <div className="grid grid-cols-2 gap-4">
-            {/* City */}
             <div className="space-y-2">
               <Label>City</Label>
               <Select
@@ -200,7 +220,6 @@ export default function CampaignDialog({
               </Select>
             </div>
 
-            {/* Qualified status */}
             <div className="space-y-2">
               <Label>Lead status</Label>
               <Select
@@ -221,7 +240,6 @@ export default function CampaignDialog({
             </div>
           </div>
 
-          {/* Niche & contact attempt */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Niche</Label>
@@ -271,15 +289,31 @@ export default function CampaignDialog({
             </div>
           </div>
 
-          <DialogFooter className="pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit">Save campaign</Button>
+          <DialogFooter className="pt-4 flex items-center justify-between gap-2">
+            {/* Delete kao CRVENI TEKST (nije button look) */}
+            {campaign?.id ? (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="text-sm text-red-600 hover:underline hover:text-red-700 disabled:opacity-50"
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            ) : (
+              <span />
+            )}
+
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">Save campaign</Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

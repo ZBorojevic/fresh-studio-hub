@@ -1,10 +1,8 @@
-// /var/www/fresh-studio-hub/src/pages/admin/Login.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Card,
   CardHeader,
-  CardTitle,
   CardDescription,
   CardContent,
   CardFooter,
@@ -22,59 +20,80 @@ interface AdminPayload {
 }
 
 interface LoginResponse {
-  token: string;
-  admin: AdminPayload;
+  token?: string;
+  admin?: AdminPayload;
+  error?: string;
 }
 
 export default function Login() {
-  const [username, setUsername] = useState("ironman");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [username, setUsername] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  // reset forme pri ulasku na /login
+  useEffect(() => {
+    setUsername("");
+    setPassword("");
+    setError(null);
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
+
+    const cleanUsername = username.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    if (!cleanUsername || !cleanPassword) {
+      setError("Username and password are required.");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username, password }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: cleanUsername,
+          password: cleanPassword,
+        }),
       });
 
-      const data: LoginResponse = await response.json();
+      const data: LoginResponse = await response.json().catch(() => ({}));
 
       if (!response.ok || !data.token || !data.admin) {
-        const errMsg =
-          (data as any)?.error ?? "Neispravni podaci za prijavu";
-        setError(errMsg);
-        return;
+        throw new Error(data.error || "Invalid username or password.");
       }
 
-      // Token
       localStorage.setItem("fs_auth_token", data.token);
-
-      // Admin info
       localStorage.setItem("fs_admin_username", data.admin.username);
+
       if (data.admin.full_name) {
         localStorage.setItem("fs_admin_fullname", data.admin.full_name);
+      } else {
+        localStorage.removeItem("fs_admin_fullname");
       }
+
       if (data.admin.email) {
         localStorage.setItem("fs_admin_email", data.admin.email);
+      } else {
+        localStorage.removeItem("fs_admin_email");
       }
+
       if (data.admin.avatar_url) {
         localStorage.setItem("fs_admin_avatar_url", data.admin.avatar_url);
+      } else {
+        localStorage.removeItem("fs_admin_avatar_url");
       }
 
       navigate("/admin");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Login error:", err);
-      setError("Došlo je do greške pri prijavi. Pokušaj ponovno.");
+      setError(err?.message || "Login failed.");
     } finally {
       setLoading(false);
     }
@@ -87,19 +106,22 @@ export default function Login() {
           <CardHeader className="space-y-4 items-center text-center">
             <img src={logo} alt="Fresh Studio" className="h-10 w-auto" />
             <div>
-              <CardDescription>Prijava u hub</CardDescription>
+              <CardDescription>Login to Hub</CardDescription>
             </div>
           </CardHeader>
+
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {/* bitno: autoComplete off na formi pomaže protiv prefilla */}
+            <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
               <div>
                 <Input
                   id="username"
+                  name="username"
                   type="text"
-                  autoComplete="username"
+                  autoComplete="off"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Korisničko ime"
+                  placeholder="Username"
                   required
                 />
               </div>
@@ -107,11 +129,12 @@ export default function Login() {
               <div>
                 <Input
                   id="password"
+                  name="password"
                   type="password"
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Lozinka"
+                  placeholder="Password"
                   required
                 />
               </div>
@@ -122,15 +145,12 @@ export default function Login() {
                 </p>
               )}
 
-              <Button
-                type="submit"
-                className="w-full mt-2"
-                disabled={loading}
-              >
-                {loading ? "Prijava..." : "Prijavi se"}
+              <Button type="submit" className="w-full mt-2" disabled={loading}>
+                {loading ? "Signing in..." : "Sign in"}
               </Button>
             </form>
           </CardContent>
+
           <CardFooter className="flex flex-col items-center gap-2 text-xs text-muted-foreground pb-6">
             Fresh Studio · Private Hub Panel
           </CardFooter>
