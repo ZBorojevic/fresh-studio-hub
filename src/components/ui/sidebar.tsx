@@ -50,6 +50,20 @@ const SidebarProvider = React.forwardRef<
 >(({ defaultOpen = true, open: openProp, onOpenChange: setOpenProp, className, style, children, ...props }, ref) => {
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = React.useState(false);
+  // Automatsko zatvaranje sidebar-a na promjenu rute (mobitel)
+  const location = typeof window !== "undefined" ? window.location : null;
+  React.useEffect(() => {
+    if (!isMobile) return;
+    const handleRouteChange = () => setOpenMobile(false);
+    window.addEventListener("popstate", handleRouteChange);
+    window.addEventListener("pushstate", handleRouteChange);
+    window.addEventListener("replacestate", handleRouteChange);
+    return () => {
+      window.removeEventListener("popstate", handleRouteChange);
+      window.removeEventListener("pushstate", handleRouteChange);
+      window.removeEventListener("replacestate", handleRouteChange);
+    };
+  }, [isMobile]);
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
@@ -157,11 +171,11 @@ const Sidebar = React.forwardRef<
           data-sidebar="sidebar"
           data-mobile="true"
           className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
-          style={
-            {
-              "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
-            } as React.CSSProperties
-          }
+          style={{
+            "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+            paddingTop: "calc(env(safe-area-inset-top, 0px) + 24px)",
+            paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          } as React.CSSProperties}
           side={side}
         >
           <div className="flex h-full w-full flex-col">{children}</div>

@@ -50,7 +50,8 @@ export function AdminLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen w-screen overflow-hidden bg-background">
+      {/* Backdrop (mobile) */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm lg:hidden"
@@ -58,123 +59,125 @@ export function AdminLayout() {
         />
       )}
 
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-foreground transform transition-transform duration-200 ease-in-out lg:translate-x-0",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        <div className="flex h-full flex-col">
-          <div
+          {/* Sidebar */}
+          <aside
             className={cn(
-              "flex items-center justify-between px-6 border-b border-sidebar-border",
-              "pt-[env(safe-area-inset-top)]",
-              "h-[calc(4rem+env(safe-area-inset-top))]"
+              "fixed inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-foreground transform transition-transform duration-200 ease-in-out lg:translate-x-0",
+              sidebarOpen ? "translate-x-0" : "-translate-x-full"
             )}
+            style={{
+              paddingTop: "env(safe-area-inset-top)",
+              paddingBottom: "env(safe-area-inset-bottom)",
+            }}
           >
-            {/* ✅ klik na Fresh Studio vodi na dashboard */}
-            <button
-              type="button"
-              onClick={goDashboard}
-              className="text-left text-xl font-bold text-sidebar-primary hover:opacity-90"
-              aria-label="Go to Dashboard"
-            >
-              Fresh Studio
-            </button>
-
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden text-sidebar-foreground hover:text-sidebar-primary"
-              aria-label="Close menu"
-              type="button"
-            >
-              <X className="h-6 w-6" />
-            </button>
-          </div>
-
-          <nav className="flex-1 space-y-1 px-3 py-4">
-            {navigation.map((item) => {
-              const isActive =
-                location.pathname === item.href ||
-                (item.href !== "/admin" &&
-                  location.pathname.startsWith(item.href));
-
-              return (
-                <div
-                  key={item.name}
-                  onClick={() => setSidebarOpen(false)}
-                  className="cursor-pointer"
+            <div className="flex h-full flex-col">
+              {/* Header linija prikazuj samo na mobilnim uređajima */}
+              <div className="flex items-center justify-between px-6 border-b border-sidebar-border h-16 lg:hidden">
+                <button
+                  type="button"
+                  onClick={goDashboard}
+                  className="text-left text-xl font-bold text-sidebar-primary hover:opacity-90"
+                  aria-label="Go to Dashboard"
                 >
-                  <NavLink
-                    to={item.href}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                      "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                    )}
-                    activeClassName="bg-sidebar-primary text-sidebar-primary-foreground"
+                  Fresh Studio
+                </button>
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="text-sidebar-foreground hover:text-sidebar-primary"
+                  aria-label="Close menu"
+                  type="button"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              <nav className="flex-1 space-y-1 px-3 py-4 overflow-auto">
+                {navigation.map((item) => (
+                  <div
+                    key={item.name}
+                    onClick={() => setSidebarOpen(false)}
+                    className="cursor-pointer"
                   >
-                    <item.icon className="h-5 w-5" />
-                    {item.name}
-                    {isActive && <ChevronRight className="ml-auto h-4 w-4" />}
-                  </NavLink>
-                </div>
-              );
-            })}
-          </nav>
-
-          <div className="border-t border-sidebar-border p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-full bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-semibold">
-                  FS
-                </div>
-                <div className="text-sm">
-                  <p className="font-medium">Admin</p>
-                  <p className="text-xs text-sidebar-foreground/60">
-                    admin@freshstudio.hr
-                  </p>
+                    <NavLink
+                      to={item.href}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                        "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      )}
+                      activeClassName="bg-sidebar-primary text-sidebar-primary-foreground"
+                    >
+                      <item.icon className="h-5 w-5" />
+                      {item.name}
+                    </NavLink>
+                  </div>
+                ))}
+              </nav>
+              <div className="border-t border-sidebar-border p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-semibold">
+                      FS
+                    </div>
+                    <div className="text-sm">
+                      <p className="font-medium">Admin</p>
+                      <p className="text-xs text-sidebar-foreground/60">
+                        admin@freshstudio.hr
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleLogout}
+                    className="text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent"
+                    aria-label="Logout"
+                    type="button"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleLogout}
-                className="text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent"
-                aria-label="Logout"
+            </div>
+          </aside>
+          {/* Main area */}
+          <div className="h-full lg:pl-64 overflow-hidden">
+            {/* Mobile top bar (only for hamburger) */}
+            <header
+              className={cn(
+                "lg:hidden border-b bg-card",
+                "h-14 flex items-center px-4 gap-3"
+              )}
+              style={{
+                paddingTop: "env(safe-area-inset-top)",
+                height: "calc(3.5rem + env(safe-area-inset-top))",
+              }}
+            >
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="text-foreground p-2 -ml-2 rounded-md active:scale-[0.98]"
+                aria-label="Open menu"
                 type="button"
               >
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
+                <Menu className="h-6 w-6" />
+              </button>
+              <div className="font-semibold">Fresh Studio</div>
+              <div className="flex-1" />
+            </header>
+            <main
+              className={cn(
+                "h-full overflow-hidden",
+                "p-4 sm:p-6",
+                "lg:pt-6",
+                "lg:pl-0"
+              )}
+              style={{
+                height: "100%",
+              }}
+            >
+              <div className="h-full overflow-hidden">
+                <Outlet />
+              </div>
+            </main>
           </div>
         </div>
-      </aside>
-
-      <div className="lg:pl-64">
-        <header
-          className={cn(
-            "sticky top-0 z-30 border-b bg-card px-6",
-            "pt-[env(safe-area-inset-top)]",
-            "min-h-[calc(4rem+env(safe-area-inset-top))]",
-            "flex items-center gap-4"
-          )}
-        >
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden text-foreground"
-            aria-label="Open menu"
-            type="button"
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-          <div className="flex-1" />
-        </header>
-
-        <main className="p-6">
-          <Outlet />
-        </main>
-      </div>
-    </div>
-  );
-}
+    );
+} 

@@ -55,6 +55,10 @@
     --chart-3: 0 0% 50%;
     --chart-4: 0 0% 60%;
     --chart-5: 0 0% 70%;
+
+    
+    --safe-top: env(safe-area-inset-top);
+    --safe-bottom: env(safe-area-inset-bottom);
   }
 
   .dark {

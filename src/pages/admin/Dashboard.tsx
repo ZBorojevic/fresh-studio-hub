@@ -99,8 +99,10 @@ export default function Dashboard() {
   }, [newLeads7d]);
 
   return (
-    <div className="space-y-6">
-      <div>
+    // ✅ fixed app page, no outer scroll
+    <div className="h-full overflow-hidden flex flex-col gap-6">
+      {/* Title */}
+      <div className="shrink-0">
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">
           Overview of Fresh Studio hub growth — leads, clients, and campaigns.
@@ -108,32 +110,28 @@ export default function Dashboard() {
       </div>
 
       {error && (
-        <Card className="border-destructive/40 bg-destructive/5">
+        <Card className="border-destructive/40 bg-destructive/5 shrink-0">
           <CardContent className="pt-4 text-sm text-destructive">
             {error}
           </CardContent>
         </Card>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* New Leads */}
+      {/* KPI row (doesn't force page scroll) */}
+      <div className="shrink-0 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              New Leads (7 days)
+              New Leads (this week)
             </CardTitle>
             <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {loading ? "…" : newLeads7d}
-            </div>
-
+            <div className="text-2xl font-bold">{loading ? "…" : newLeads7d}</div>
             <p className="text-xs text-muted-foreground">
               Total leads: {totals?.totalLeads ?? 0}
             </p>
 
-            {/* ✅ Weekly target */}
             <div className="mt-3 space-y-2">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>Weekly target</span>
@@ -142,16 +140,12 @@ export default function Dashboard() {
                 </span>
               </div>
               <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full bg-primary"
-                  style={{ width: `${targetPct}%` }}
-                />
+                <div className="h-full bg-primary" style={{ width: `${targetPct}%` }} />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Qualified Leads */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -170,7 +164,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Clients */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Clients</CardTitle>
@@ -186,7 +179,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Emails Sent */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -206,16 +198,16 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {/* Latest Leads */}
-        <Card>
-          <CardHeader>
+      {/* Bottom section fills remaining height; each card scrolls internally */}
+      <div className="flex-1 overflow-hidden grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="overflow-hidden flex flex-col">
+          <CardHeader className="shrink-0">
             <CardTitle>Latest Leads</CardTitle>
             <CardDescription>
               The most recent contacts added to the system
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 overflow-auto">
             {loading && !data && (
               <p className="text-sm text-muted-foreground">Loading…</p>
             )}
@@ -228,19 +220,19 @@ export default function Dashboard() {
                   key={lead.id}
                   className="flex items-center justify-between border-b pb-3 last:border-0"
                 >
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">
+                  <div className="space-y-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
                       {lead.companyName || "Unknown company"}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground truncate">
                       {lead.email || "No email"}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground truncate">
                       {lead.city || "-"}
                       {lead.niche ? ` · ${lead.niche}` : ""}
                     </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground shrink-0">
                     {new Date(lead.createdAt).toLocaleDateString("en-GB")}
                   </p>
                 </div>
@@ -249,15 +241,14 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Latest Clients */}
-        <Card>
-          <CardHeader>
+        <Card className="overflow-hidden flex flex-col">
+          <CardHeader className="shrink-0">
             <CardTitle>Latest Clients</CardTitle>
             <CardDescription>
               Leads that became clients (Client closed)
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 overflow-auto">
             {loading && !data && (
               <p className="text-sm text-muted-foreground">Loading…</p>
             )}
@@ -272,20 +263,20 @@ export default function Dashboard() {
                   key={lead.id}
                   className="flex items-center justify-between border-b pb-3 last:border-0"
                 >
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium flex items-center gap-1">
+                  <div className="space-y-1 min-w-0">
+                    <p className="text-sm font-medium flex items-center gap-1 truncate">
                       {lead.companyName || "Unknown company"}
-                      <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                      <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground truncate">
                       {lead.email || "No email"}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground truncate">
                       {lead.city || "-"}
                       {lead.niche ? ` · ${lead.niche}` : ""}
                     </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground shrink-0">
                     {new Date(lead.createdAt).toLocaleDateString("en-GB")}
                   </p>
                 </div>
@@ -294,15 +285,14 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Positive Activity */}
-        <Card>
-          <CardHeader>
+        <Card className="overflow-hidden flex flex-col">
+          <CardHeader className="shrink-0">
             <CardTitle>Positive Activity</CardTitle>
             <CardDescription>
               Leads with the most progress (client or qualified + contacted)
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 overflow-auto">
             {loading && !data && (
               <p className="text-sm text-muted-foreground">Loading…</p>
             )}
@@ -317,15 +307,15 @@ export default function Dashboard() {
                   key={lead.id}
                   className="flex flex-col border-b pb-3 last:border-0"
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm font-medium">
+                  <div className="flex items-center justify-between mb-1 gap-3">
+                    <p className="text-sm font-medium truncate">
                       {lead.companyName || "Unknown company"}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground shrink-0">
                       {new Date(lead.updatedAt).toLocaleDateString("en-GB")}
                     </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground truncate">
                     {lead.email || "No email"}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1">
@@ -334,12 +324,8 @@ export default function Dashboard() {
                         Client
                       </Badge>
                     )}
-                    {lead.isQualified && (
-                      <Badge variant="outline">Qualified</Badge>
-                    )}
-                    {lead.contacted && (
-                      <Badge variant="outline">Contacted</Badge>
-                    )}
+                    {lead.isQualified && <Badge variant="outline">Qualified</Badge>}
+                    {lead.contacted && <Badge variant="outline">Contacted</Badge>}
                   </div>
                 </div>
               ))}

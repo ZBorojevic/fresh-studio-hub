@@ -78,6 +78,7 @@ export default function LeadDetail() {
 
   const [formData, setFormData] = useState<LeadForm>(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   // Fetch postojećeg leada ako nije "new"
   useEffect(() => {
@@ -128,7 +129,8 @@ export default function LeadDetail() {
     fetchLead();
   }, [id, isNew, toast]);
 
-  const handleSave = async () => {
+    const handleSave = async () => {
+    setEmailError(null);
     try {
       setLoading(true);
 
@@ -157,19 +159,23 @@ export default function LeadDetail() {
       });
 
       if (!res.ok) {
-        throw new Error("Failed to save lead");
+        const body = await res.json().catch(() => null);
+        if (res.status === 409 && body?.error?.includes("email")) {
+          setEmailError("Lead with this email adress already exists.");
+          return;
+        }
+        throw new Error(body?.error || "Failed to save lead");
       }
 
-      const saved = await res.json();
+      await res.json().catch(() => null);
 
       toast({
         title: isNew ? "Lead created" : "Lead updated",
         description: "Lead information has been saved successfully.",
       });
 
-      if (isNew) {
-        navigate(`/admin/leads/${saved.id}`, { replace: true });
-      }
+      // ✅ uvijek nazad na listu
+      navigate("/admin/leads", { replace: true });
     } catch (err) {
       console.error(err);
       toast({
@@ -343,12 +349,16 @@ export default function LeadDetail() {
                       id="email"
                       type="email"
                       value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
-                      className="pl-9"
+                      onChange={(e) => {
+                        setFormData({ ...formData, email: e.target.value });
+                        setEmailError(null);
+                      }}
+                      className={`pl-9 ${emailError ? "border-red-500" : ""}`}
                     />
                   </div>
+                  {emailError && (
+                    <div className="text-red-600 text-sm mt-1 font-semibold">{emailError}</div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="tel">Phone</Label>
