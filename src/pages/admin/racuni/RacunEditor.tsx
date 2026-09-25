@@ -9,7 +9,7 @@
 // otvori preko cijelog ekrana.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Eye, Plus, Save, Send, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Eye, Plus, Save, Send, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -259,6 +259,28 @@ export default function RacunEditor() {
     }
   };
 
+  /**
+   * Označava račun plaćenim i odmah sprema.
+   *
+   * Namjerno ne čeka „Spremi": kad se novac vidi na izvodu, to je jedan klik i
+   * gotovo. Sve ostalo na računu ostaje netaknuto.
+   */
+  const oznaciPlacenim = async () => {
+    if (!racun?.id) return;
+
+    const odgovor = await apiFetch(`/racuni/${racun.id}`, {
+      method: "PUT",
+      body: JSON.stringify({ ...racun, status: "paid" }),
+    });
+
+    if (odgovor.ok) {
+      promijeni({ status: "paid" });
+      toast({ title: "Označeno kao plaćeno" });
+    } else {
+      toast({ title: "Nije spremljeno", variant: "destructive" });
+    }
+  };
+
   const posalji = async () => {
     if (!racun?.id) return;
 
@@ -341,6 +363,24 @@ export default function RacunEditor() {
               onChange={(e) => promijeni({ pozivNaBroj: e.target.value })}
               value={racun.pozivNaBroj}
             />
+          </div>
+
+          {/*
+            Stanje je podatak o naplati, ne o dokumentu: račun ostaje isti, samo
+            znamo je li novac stigao. Zato stoji uz broj i datume, a ne među
+            napomenama — to je prvo što se traži kad se otvori stari račun.
+          */}
+          <div>
+            <Label htmlFor="status">Stanje</Label>
+            <Select onValueChange={(v) => promijeni({ status: v })} value={racun.status}>
+              <SelectTrigger className="mt-1.5" id="status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="issued">Izdano — čeka plaćanje</SelectItem>
+                <SelectItem value="paid">Plaćeno</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -565,14 +605,26 @@ export default function RacunEditor() {
             <h1 className="text-xl font-semibold tracking-tight">
               {noviRacun ? "Novi račun" : `Račun ${racun.seq}-${racun.unit}-${racun.operator}`}
             </h1>
-            {racun.source === "sidrena" && (
-              <p className="text-xs text-muted-foreground">Izdan automatski, kupnja Sidrene</p>
-            )}
+            <p className="text-xs text-muted-foreground">
+              {racun.status === "paid" ? "Plaćeno" : "Izdano — čeka plaćanje"}
+              {racun.source === "sidrena" && " · izdan automatski, kupnja Sidrene"}
+              {racun.sentTo && ` · poslano na ${racun.sentTo}`}
+            </p>
           </div>
         </div>
 
         {/* Na širokom ekranu radnje stoje gore; na mobitelu su u traci na dnu. */}
         <div className="hidden gap-2 lg:flex">
+          {!noviRacun && racun.status !== "paid" && (
+            <Button
+              className="gap-2"
+              onClick={() => void oznaciPlacenim()}
+              variant="outline"
+            >
+              <Check className="h-4 w-4" aria-hidden="true" />
+              Označi plaćenim
+            </Button>
+          )}
           {!noviRacun && (
             <Button className="gap-2" onClick={posalji} variant="outline">
               <Send className="h-4 w-4" aria-hidden="true" />
@@ -610,10 +662,19 @@ export default function RacunEditor() {
             className="fixed inset-x-0 bottom-0 z-40 flex gap-2 border-t bg-background/95 p-3 backdrop-blur"
             style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))" }}
           >
+            {!noviRacun && racun.status !== "paid" && (
+              <Button
+                aria-label="Označi plaćenim"
+                onClick={() => void oznaciPlacenim()}
+                size="icon"
+                variant="outline"
+              >
+                <Check className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            )}
             {!noviRacun && (
-              <Button className="gap-2" onClick={posalji} variant="outline">
+              <Button aria-label="Pošalji račun" onClick={posalji} size="icon" variant="outline">
                 <Send className="h-4 w-4" aria-hidden="true" />
-                Pošalji
               </Button>
             )}
             <Button className="flex-1 gap-2" disabled={spremam} onClick={spremi}>
