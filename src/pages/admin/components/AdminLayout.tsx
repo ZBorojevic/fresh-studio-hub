@@ -1,4 +1,4 @@
-// /var/www/fresh-studio-hub/src/components/AdminLayout.tsx
+// /var/www/fresh-studio-hub/src/pages/admin/components/AdminLayout.tsx
 import { useState, useEffect } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
@@ -7,6 +7,8 @@ import {
   Users,
   Mail,
   Server,
+  HardDrive,
+  Receipt,
   Menu,
   X,
   LogOut,
@@ -14,14 +16,17 @@ import {
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import logoDark from "@/assets/logo-dark.svg";
 
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Blog", href: "/admin/blog", icon: FileText },
+  { name: "Media", href: "/admin/media", icon: HardDrive },
   { name: "Leads", href: "/admin/leads", icon: Users },
   { name: "Campaigns", href: "/admin/campaigns", icon: Mail },
   { name: "Services", href: "/admin/services", icon: Server },
+  { name: "Računi", href: "/admin/racuni", icon: Receipt },
 ];
 
 export function AdminLayout() {
@@ -32,6 +37,7 @@ export function AdminLayout() {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const token = localStorage.getItem("fs_auth_token");
@@ -50,6 +56,11 @@ export function AdminLayout() {
     setAvatarUrl(avatar);
   }, [navigate, location.pathname]);
 
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
   const handleLogout = () => {
     localStorage.removeItem("fs_auth_token");
     localStorage.removeItem("fs_admin_username");
@@ -67,8 +78,100 @@ export function AdminLayout() {
     .join("")
     .toUpperCase();
 
+  // Check if a nav item is active (exact for dashboard, startsWith for others)
+  const isActive = (href: string) => {
+    if (href === "/admin") return location.pathname === "/admin";
+    return location.pathname.startsWith(href);
+  };
+
+  /* ======================================================================== */
+  /* MOBILE LAYOUT                                                             */
+  /* ======================================================================== */
+  if (isMobile) {
+    return (
+      <div className="h-full flex flex-col bg-background">
+        {/* Mobile top header */}
+        <header
+          className="shrink-0 flex items-center justify-between border-b bg-card px-4"
+          style={{
+            height: "calc(3rem + var(--safe-top))",
+            paddingTop: "var(--safe-top)",
+          }}
+        >
+          <img src={logoDark} alt="Fresh Studio" className="h-6 w-auto invert" />
+
+          <div className="flex items-center gap-2">
+            {/* User avatar / initials */}
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={adminName}
+                className="h-7 w-7 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-[10px] font-semibold">
+                {initials || "FS"}
+              </div>
+            )}
+            <button
+              onClick={handleLogout}
+              className="h-9 w-9 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              aria-label="Logout"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        </header>
+
+        {/* Scrollable content area */}
+        <main className="flex-1 overflow-auto p-4">
+          <Outlet />
+        </main>
+
+        {/* Bottom navigation */}
+        <nav
+          className="shrink-0 border-t bg-card flex items-center justify-around"
+          style={{
+            height: "calc(var(--bottom-nav-height) + var(--safe-bottom))",
+            paddingBottom: "var(--safe-bottom)",
+          }}
+        >
+          {navigation.map((item) => {
+            const active = isActive(item.href);
+            return (
+              <NavLink
+                key={item.name}
+                to={item.href}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-0.5 py-1 px-2 rounded-lg transition-colors flex-1",
+                  active
+                    ? "text-foreground"
+                    : "text-muted-foreground"
+                )}
+                activeClassName=""
+              >
+                <item.icon
+                  className={cn(
+                    "h-5 w-5 transition-colors",
+                    active && "text-foreground"
+                  )}
+                />
+                <span className="text-[10px] font-medium leading-none">
+                  {item.name}
+                </span>
+              </NavLink>
+            );
+          })}
+        </nav>
+      </div>
+    );
+  }
+
+  /* ======================================================================== */
+  /* DESKTOP LAYOUT                                                            */
+  /* ======================================================================== */
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-full bg-background">
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
@@ -101,6 +204,7 @@ export function AdminLayout() {
               <NavLink
                 key={item.name}
                 to={item.href}
+                end={item.href === "/admin"}
                 className="group flex items-center rounded-lg px-3 py-2 text-sm font-medium text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent"
                 activeClassName="bg-sidebar-accent text-sidebar-foreground"
               >
@@ -135,14 +239,9 @@ export function AdminLayout() {
                 </div>
               </div>
 
-              {/* 🔥 FIXED LOGOUT BUTTON */}
               <button
                 onClick={handleLogout}
-                className="
-                  h-8 w-8 flex items-center justify-center rounded-md
-                  text-sidebar-muted hover:text-sidebar-foreground
-                  hover:bg-sidebar-accent transition-colors
-                "
+                className="h-8 w-8 flex items-center justify-center rounded-md text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
                 aria-label="Logout"
               >
                 <LogOut className="h-4 w-4" />
@@ -153,8 +252,8 @@ export function AdminLayout() {
       </aside>
 
       {/* MAIN CONTENT */}
-      <div className="lg:pl-64">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-card px-6">
+      <div className="lg:pl-64 h-full flex flex-col">
+        <header className="shrink-0 sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-card px-6">
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden text-foreground"
@@ -164,7 +263,7 @@ export function AdminLayout() {
           <div className="flex-1" />
         </header>
 
-        <main className="p-6">
+        <main className="flex-1 overflow-auto p-6">
           <Outlet />
         </main>
       </div>

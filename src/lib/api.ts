@@ -1,4 +1,4 @@
-// src/lib/api.ts
+// /var/www/fresh-studio-hub/src/lib/api.ts
 export async function apiFetch(
   path: string,
   options: RequestInit = {}
@@ -14,7 +14,6 @@ export async function apiFetch(
     if (token) {
       headers.set("Authorization", `Bearer ${token}`);
     }
-    // prefer fresh data for full URLs as well
     return fetch(path, { ...options, headers, cache: options.cache ?? "no-store" });
   }
 
@@ -37,7 +36,37 @@ export async function apiFetch(
   return fetch(url, {
     ...options,
     headers,
-    // ensure API requests are not served from browser HTTP cache
     cache: options.cache ?? "no-store",
+  });
+}
+
+/**
+ * Upload files via multipart/form-data.
+ * Does NOT set Content-Type header — browser sets it with boundary automatically.
+ */
+export async function apiUpload(
+  path: string,
+  formData: FormData,
+  options: RequestInit = {}
+): Promise<Response> {
+  const token = localStorage.getItem("fs_auth_token");
+
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const url = normalizedPath.startsWith("/api")
+    ? normalizedPath
+    : `/api${normalizedPath}`;
+
+  const headers = new Headers(options.headers || {});
+  // NE postavljamo Content-Type — browser sam dodaje multipart boundary
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  return fetch(url, {
+    ...options,
+    method: options.method ?? "POST",
+    headers,
+    body: formData,
+    cache: "no-store",
   });
 }

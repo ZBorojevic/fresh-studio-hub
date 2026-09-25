@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+// /var/www/fresh-studio-hub/src/pages/admin/components/AdminLayout.tsx
+import { useState, useEffect } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -6,18 +7,21 @@ import {
   Users,
   Mail,
   Server,
+  HardDrive,
   Menu,
   X,
   LogOut,
   ChevronRight,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { NavLink } from "@/components/NavLink";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import logoDark from "@/assets/logo-dark.svg";
 
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Blog", href: "/admin/blog", icon: FileText },
+  { name: "Media", href: "/admin/media", icon: HardDrive },
   { name: "Leads", href: "/admin/leads", icon: Users },
   { name: "Campaigns", href: "/admin/campaigns", icon: Mail },
   { name: "Services", href: "/admin/services", icon: Server },
@@ -25,18 +29,35 @@ const navigation = [
 
 export function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [adminName, setAdminName] = useState("Admin");
+  const [adminEmail, setAdminEmail] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useIsMobile();
 
-  // Close sidebar on route change (mobile UX)
+  useEffect(() => {
+    const token = localStorage.getItem("fs_auth_token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    const fullName = localStorage.getItem("fs_admin_fullname");
+    const username = localStorage.getItem("fs_admin_username");
+    const email = localStorage.getItem("fs_admin_email");
+    const avatar = localStorage.getItem("fs_admin_avatar_url");
+
+    setAdminName(fullName || username || "Admin");
+    setAdminEmail(email);
+    setAvatarUrl(avatar);
+  }, [navigate, location.pathname]);
+
+  // Close sidebar on route change (mobile)
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
-
-  const goDashboard = () => {
-    setSidebarOpen(false);
-    navigate("/admin");
-  };
 
   const handleLogout = () => {
     localStorage.removeItem("fs_auth_token");
@@ -44,140 +65,206 @@ export function AdminLayout() {
     localStorage.removeItem("fs_admin_fullname");
     localStorage.removeItem("fs_admin_email");
     localStorage.removeItem("fs_admin_avatar_url");
-
-    setSidebarOpen(false);
     navigate("/login");
   };
 
+  const initials = adminName
+    .split(" ")
+    .filter(Boolean)
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  // Check if a nav item is active (exact for dashboard, startsWith for others)
+  const isActive = (href: string) => {
+    if (href === "/admin") return location.pathname === "/admin";
+    return location.pathname.startsWith(href);
+  };
+
+  /* ======================================================================== */
+  /* MOBILE LAYOUT                                                             */
+  /* ======================================================================== */
+  if (isMobile) {
+    return (
+      <div className="h-full flex flex-col bg-background">
+        {/* Mobile top header */}
+        <header
+          className="shrink-0 flex items-center justify-between border-b bg-card px-4"
+          style={{
+            height: "calc(3rem + var(--safe-top))",
+            paddingTop: "var(--safe-top)",
+          }}
+        >
+          <img src={logoDark} alt="Fresh Studio" className="h-6 w-auto invert" />
+
+          <div className="flex items-center gap-2">
+            {/* User avatar / initials */}
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={adminName}
+                className="h-7 w-7 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-[10px] font-semibold">
+                {initials || "FS"}
+              </div>
+            )}
+            <button
+              onClick={handleLogout}
+              className="h-9 w-9 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              aria-label="Logout"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        </header>
+
+        {/* Scrollable content area */}
+        <main className="flex-1 overflow-auto p-4">
+          <Outlet />
+        </main>
+
+        {/* Bottom navigation */}
+        <nav
+          className="shrink-0 border-t bg-card flex items-center justify-around"
+          style={{
+            height: "calc(var(--bottom-nav-height) + var(--safe-bottom))",
+            paddingBottom: "var(--safe-bottom)",
+          }}
+        >
+          {navigation.map((item) => {
+            const active = isActive(item.href);
+            return (
+              <NavLink
+                key={item.name}
+                to={item.href}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-0.5 py-1 px-2 rounded-lg transition-colors flex-1",
+                  active
+                    ? "text-foreground"
+                    : "text-muted-foreground"
+                )}
+                activeClassName=""
+              >
+                <item.icon
+                  className={cn(
+                    "h-5 w-5 transition-colors",
+                    active && "text-foreground"
+                  )}
+                />
+                <span className="text-[10px] font-medium leading-none">
+                  {item.name}
+                </span>
+              </NavLink>
+            );
+          })}
+        </nav>
+      </div>
+    );
+  }
+
+  /* ======================================================================== */
+  /* DESKTOP LAYOUT                                                            */
+  /* ======================================================================== */
   return (
-    <div className="h-screen w-screen overflow-hidden bg-background">
-      {/* Backdrop (mobile) */}
+    <div className="h-full bg-background">
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-          {/* Sidebar */}
-          <aside
-            className={cn(
-              "fixed inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-foreground transform transition-transform duration-200 ease-in-out lg:translate-x-0",
-              sidebarOpen ? "translate-x-0" : "-translate-x-full"
-            )}
-            style={{
-              paddingTop: "env(safe-area-inset-top)",
-              paddingBottom: "env(safe-area-inset-bottom)",
-            }}
-          >
-            <div className="flex h-full flex-col">
-              {/* Header linija prikazuj samo na mobilnim uređajima */}
-              <div className="flex items-center justify-between px-6 border-b border-sidebar-border h-16 lg:hidden">
-                <button
-                  type="button"
-                  onClick={goDashboard}
-                  className="text-left text-xl font-bold text-sidebar-primary hover:opacity-90"
-                  aria-label="Go to Dashboard"
-                >
-                  Fresh Studio
-                </button>
-                <button
-                  onClick={() => setSidebarOpen(false)}
-                  className="text-sidebar-foreground hover:text-sidebar-primary"
-                  aria-label="Close menu"
-                  type="button"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-              <nav className="flex-1 space-y-1 px-3 py-4 overflow-auto">
-                {navigation.map((item) => (
-                  <div
-                    key={item.name}
-                    onClick={() => setSidebarOpen(false)}
-                    className="cursor-pointer"
-                  >
-                    <NavLink
-                      to={item.href}
-                      className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                        "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      )}
-                      activeClassName="bg-sidebar-primary text-sidebar-primary-foreground"
-                    >
-                      <item.icon className="h-5 w-5" />
-                      {item.name}
-                    </NavLink>
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border transform transition-transform duration-200 ease-in-out lg:translate-x-0",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="flex h-full flex-col">
+          {/* Logo */}
+          <div className="flex h-20 items-center justify-center px-6 border-b border-sidebar-border relative">
+            <img src={logoDark} alt="Fresh Studio" className="h-10 w-auto" />
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden absolute right-4 text-sidebar-foreground hover:text-sidebar-primary"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Nav links */}
+          <nav className="flex-1 space-y-1 px-3 py-4">
+            {navigation.map((item) => (
+              <NavLink
+                key={item.name}
+                to={item.href}
+                end={item.href === "/admin"}
+                className="group flex items-center rounded-lg px-3 py-2 text-sm font-medium text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                activeClassName="bg-sidebar-accent text-sidebar-foreground"
+              >
+                <item.icon className="mr-3 h-4 w-4" />
+                <span className="flex-1 text-left">{item.name}</span>
+                <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </NavLink>
+            ))}
+          </nav>
+
+          {/* Footer / user info */}
+          <div className="border-t border-sidebar-border p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={adminName}
+                    className="h-8 w-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-semibold text-sidebar-foreground">
+                    {initials || "FS"}
                   </div>
-                ))}
-              </nav>
-              <div className="border-t border-sidebar-border p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-semibold">
-                      FS
-                    </div>
-                    <div className="text-sm">
-                      <p className="font-medium">Admin</p>
-                      <p className="text-xs text-sidebar-foreground/60">
-                        admin@freshstudio.hr
-                      </p>
-                    </div>
+                )}
+
+                <div className="text-xs text-sidebar-muted leading-tight min-w-0">
+                  <div className="font-medium text-sidebar-foreground truncate">
+                    {adminName}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleLogout}
-                    className="text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent"
-                    aria-label="Logout"
-                    type="button"
-                  >
-                    <LogOut className="h-4 w-4" />
-                  </Button>
+                  <div className="truncate">{adminEmail}</div>
                 </div>
               </div>
-            </div>
-          </aside>
-          {/* Main area */}
-          <div className="h-full lg:pl-64 overflow-hidden">
-            {/* Mobile top bar (only for hamburger) */}
-            <header
-              className={cn(
-                "lg:hidden border-b bg-card",
-                "h-14 flex items-center px-4 gap-3"
-              )}
-              style={{
-                paddingTop: "env(safe-area-inset-top)",
-                height: "calc(3.5rem + env(safe-area-inset-top))",
-              }}
-            >
+
               <button
-                onClick={() => setSidebarOpen(true)}
-                className="text-foreground p-2 -ml-2 rounded-md active:scale-[0.98]"
-                aria-label="Open menu"
-                type="button"
+                onClick={handleLogout}
+                className="h-8 w-8 flex items-center justify-center rounded-md text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+                aria-label="Logout"
               >
-                <Menu className="h-6 w-6" />
+                <LogOut className="h-4 w-4" />
               </button>
-              <div className="font-semibold">Fresh Studio</div>
-              <div className="flex-1" />
-            </header>
-            <main
-              className={cn(
-                "h-full overflow-hidden",
-                "p-4 sm:p-6",
-                "lg:pt-6",
-                "lg:pl-0"
-              )}
-              style={{
-                height: "100%",
-              }}
-            >
-              <div className="h-full overflow-hidden">
-                <Outlet />
-              </div>
-            </main>
+            </div>
           </div>
         </div>
-    );
-} 
+      </aside>
+
+      {/* MAIN CONTENT */}
+      <div className="lg:pl-64 h-full flex flex-col">
+        <header className="shrink-0 sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-card px-6">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="lg:hidden text-foreground"
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+          <div className="flex-1" />
+        </header>
+
+        <main className="flex-1 overflow-auto p-6">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
+}
