@@ -20,6 +20,8 @@ import CampaignsList from "@/pages/admin/campaigns/CampaignsList";
 import ServicesList from "@/pages/admin/services/ServicesList";
 import RacuniList from "@/pages/admin/racuni/RacuniList";
 import RacunEditor from "@/pages/admin/racuni/RacunEditor";
+import PonudeList from "@/pages/admin/ponude/PonudeList";
+import PonudaEditor from "@/pages/admin/ponude/PonudaEditor";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +47,8 @@ const App = () => (
             <Route path="services" element={<ServicesList />} />
             <Route path="racuni" element={<RacuniList />} />
             <Route path="racuni/:id" element={<RacunEditor />} />
+            <Route path="ponude" element={<PonudeList />} />
+            <Route path="ponude/:id" element={<PonudaEditor />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

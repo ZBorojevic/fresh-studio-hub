@@ -4,6 +4,7 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   FileText,
+  FileSignature,
   Users,
   Mail,
   Server,
@@ -27,6 +28,7 @@ const navigation = [
   { name: "Campaigns", href: "/admin/campaigns", icon: Mail },
   { name: "Services", href: "/admin/services", icon: Server },
   { name: "Računi", href: "/admin/racuni", icon: Receipt },
+  { name: "Ponude", href: "/admin/ponude", icon: FileSignature },
 ];
 
 export function AdminLayout() {
