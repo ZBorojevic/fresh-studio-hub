@@ -1,6 +1,6 @@
 // /var/www/fresh-studio-hub/src/pages/admin/blog/BlogList.tsx
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Edit, Trash2, Globe } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Globe, ExternalLink, ImageOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/api";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -28,6 +28,7 @@ type BlogPost = {
   publishedAt: string | null;
   updatedAt: string;
   author: string | null;
+  featuredImage: string | null;
 };
 
 type BlogListResponse = { items: BlogPost[]; total: number };
@@ -188,7 +189,7 @@ export default function BlogList() {
           <div className="flex gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search posts..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
+              <Input placeholder="Search posts…" aria-label="Search posts" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
             </div>
             <Select value={siteFilter} onValueChange={setSiteFilter}>
               <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by site" /></SelectTrigger>
@@ -220,30 +221,62 @@ export default function BlogList() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {posts.map((post) => (
-                <TableRow key={post.id}>
-                  <TableCell>
-                    <div><p className="font-medium">{post.titleHr || post.titleEn || "Untitled"}</p>
-                    <p className="text-sm text-muted-foreground">{post.slug}</p></div>
-                  </TableCell>
-                  <TableCell>{siteBadge(post.site)}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      {langBadges(post).map((lang) => (
-                        <Badge key={lang} variant="outline" className="text-xs"><Globe className="h-3 w-3 mr-1" />{lang}</Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell><Badge variant={post.status === "published" ? "default" : "secondary"}>{post.status}</Badge></TableCell>
-                  <TableCell>{formatDate(post.publishedAt || post.updatedAt)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => navigate(`/admin/blog/${post.id}`)}><Edit className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(post.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {posts.map((post) => {
+                const title = post.titleEn || post.titleHr || "Untitled";
+                const live = post.status === "published";
+                const siteBase = post.site === "pace" ? "https://pace.freshstudio.hr/blog/" : "https://freshstudio.hr/blog/";
+                return (
+                  <TableRow key={post.id} className="group">
+                    <TableCell>
+                      <div className="flex min-w-0 items-center gap-4">
+                        {post.featuredImage ? (
+                          <img src={post.featuredImage} alt="" width={96} height={50} loading="lazy" className="h-[50px] w-24 shrink-0 rounded-md object-cover" />
+                        ) : (
+                          <span className="flex h-[50px] w-24 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground" aria-hidden>
+                            <ImageOff className="h-4 w-4" />
+                          </span>
+                        )}
+                        <div className="min-w-0">
+                          <Link to={`/admin/blog/${post.id}`} className="block truncate font-medium hover:underline focus-visible:underline focus-visible:outline-none">
+                            {title}
+                          </Link>
+                          <p className="truncate text-sm text-muted-foreground" translate="no">/{post.slug}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>{siteBadge(post.site)}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {langBadges(post).map((lang) => (
+                          <Badge key={lang} variant="outline" className="text-xs"><Globe className="mr-1 h-3 w-3" aria-hidden />{lang}</Badge>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${live ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${live ? "bg-emerald-500" : "bg-amber-500"}`} aria-hidden />
+                        {live ? "Published" : "Draft"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="tabular-nums">{formatDate(post.publishedAt || post.updatedAt)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        {live && (
+                          <Button asChild variant="ghost" size="icon" aria-label={`Open "${title}" on the site`}>
+                            <a href={siteBase + post.slug} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" aria-hidden /></a>
+                          </Button>
+                        )}
+                        <Button asChild variant="ghost" size="icon" aria-label={`Edit "${title}"`}>
+                          <Link to={`/admin/blog/${post.id}`}><Edit className="h-4 w-4" aria-hidden /></Link>
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(post.id)} aria-label={`Delete "${title}"`}>
+                          <Trash2 className="h-4 w-4 text-destructive" aria-hidden />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
               {!loading && posts.length === 0 && (
                 <TableRow><TableCell colSpan={6} className="text-center py-8">No posts found.</TableCell></TableRow>
               )}

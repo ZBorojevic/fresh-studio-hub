@@ -1,3 +1,4 @@
+@import "./styles/article.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
