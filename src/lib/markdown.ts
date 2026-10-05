@@ -60,7 +60,9 @@ md.use({
   },
 });
 
-export const markdownToHtml = (src: string | null | undefined) => (src ? (md.parse(src, { async: false }) as string) : "");
+/** Tables are wrapped so they scroll sideways on phones instead of squeezing. */
+const wrapTables = (html: string) => html.replace(/<table>/g, '<div class="table-wrap"><table>').replace(/<\/table>/g, "</table></div>");
+export const markdownToHtml = (src: string | null | undefined) => (src ? wrapTables(md.parse(src, { async: false }) as string) : "");
 
 /** Words, reading time and the heading outline of a Markdown text. */
 export function articleStats(src: string) {

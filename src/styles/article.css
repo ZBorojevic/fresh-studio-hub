@@ -1,10 +1,6 @@
-/* Inter for the Pace skin (self-hosted, same files as pace.freshstudio.hr). */
-@font-face { font-family: "Inter"; font-style: normal; font-display: swap; font-weight: 100 900; src: url(/fonts/inter-latin-wght-normal.woff2) format("woff2-variations"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
-@font-face { font-family: "Inter"; font-style: normal; font-display: swap; font-weight: 100 900; src: url(/fonts/inter-latin-ext-wght-normal.woff2) format("woff2-variations"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
-
 /*
  * Blog article typography — shared by the hub preview and the public sites
- * (Pace: src/site/article.css). Keep the copies identical: what the editor
+ * (hub: src/styles/article.css). Keep the copies identical: what the editor
  * shows is what readers get.
  *
  * Skins: data-skin="pace" (Inter, gold accent) · "freshstudio" (Futura, black).
@@ -112,3 +108,49 @@
 .fs-article th, .fs-article td { padding: 0.6em 0.8em; border-bottom: 1px solid var(--a-line); text-align: left; }
 .fs-article th { font-weight: 700; color: #0d1017; border-bottom-width: 2px; }
 .fs-article .table-wrap { overflow-x: auto; }
+
+/* ---- Reading comfort (2026-10-05) ---------------------------------------- */
+
+/* The opening paragraph reads as a lead. */
+.fs-article > p:first-child { font-size: 1.15em; line-height: 1.65; color: #0d1017; }
+
+/* Images get a soft frame; tables scroll sideways (markdown.ts wraps them) instead of squeezing. */
+.fs-article img { box-shadow: 0 24px 60px -36px rgba(13, 16, 23, 0.55); }
+.fs-article .table-wrap { -webkit-overflow-scrolling: touch; }
+.fs-article td { vertical-align: top; }
+.fs-article th[align="right"], .fs-article td[align="right"] { text-align: right; }
+.fs-article th[align="center"], .fs-article td[align="center"] { text-align: center; }
+.fs-article td:last-child, .fs-article th:last-child { padding-right: 0; }
+.fs-article th:first-child, .fs-article td:first-child { padding-left: 0; }
+
+/* GFM task lists: one marker (a real box), not a bullet plus a tiny checkbox. */
+.fs-article li:has(> input[type="checkbox"]) { list-style: none; position: relative; padding-left: 0.2em; }
+.fs-article ul:has(> li > input[type="checkbox"]) { padding-left: 1.6em; }
+.fs-article li > input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: absolute;
+  left: -1.6em;
+  top: 0.32em;
+  width: 1.05em;
+  height: 1.05em;
+  margin: 0;
+  border: 2px solid var(--a-accent);
+  border-radius: 5px;
+  background: #fff;
+}
+
+/* Sources and the closing disclaimer are reference material: quieter. */
+.fs-article h2[id="sources"] + ul { font-size: 0.86em; line-height: 1.6; color: var(--a-muted); }
+.fs-article h2[id="sources"] + ul li + li { margin-top: 0.55em; }
+.fs-article hr + p:last-child { font-size: 0.85em; line-height: 1.6; color: var(--a-muted); }
+
+/* Phones: a touch tighter, wider media. */
+@media (max-width: 640px) {
+  .fs-article { font-size: 1.0625rem; line-height: 1.7; }
+  .fs-article h2 { font-size: 1.6em; margin-top: 2em; }
+  .fs-article img { width: calc(100% + 1.5rem); max-width: none; margin-left: -0.75rem; border-radius: 14px; }
+  .fs-article blockquote { padding: 0.85em 1em; }
+  .fs-article table { font-size: 0.88em; }
+  .fs-article th, .fs-article td { padding: 0.55em 0.5em; }
+}
