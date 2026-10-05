@@ -365,7 +365,7 @@ export default function BlogEditor() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="-m-6 flex h-[calc(100vh-4rem)] min-h-0 flex-col bg-muted/30">
+      <div className="-m-6 flex h-[calc(100vh-4rem)] min-h-0 flex-col bg-muted/30 2xl:-m-8">
         {/* ── Top bar ─────────────────────────────────────────────── */}
         <div className="flex h-14 shrink-0 items-center gap-3 border-b bg-card px-4">
           <Button asChild variant="ghost" size="icon" aria-label="Back to all posts">
