@@ -311,7 +311,12 @@ export default function MediaLibrary({ pickerMode = false, acceptTypes, onPick }
   const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setDragOver(false); };
   const handleDrop = (e: React.DragEvent) => { e.preventDefault(); setDragOver(false); handleUpload(e.dataTransfer.files); };
 
-  const visibleFiles = acceptTypes ? files.filter((f) => acceptTypes.some((p) => f.mimeType.startsWith(p))) : files;
+  // The API returns every file when no folder is selected. The root view shows only files
+  // that are not in a folder (folders have their own cards); a search still spans all folders.
+  const atRoot = currentFolder === null && !searchQuery;
+  const scopedFiles = atRoot ? files.filter((f) => !f.folder) : files;
+  const visibleFiles = acceptTypes ? scopedFiles.filter((f) => acceptTypes.some((p) => f.mimeType.startsWith(p))) : scopedFiles;
+  const folderCount = (name: string) => files.filter((f) => f.folder === name).length;
 
   /* ======================================================================== */
   /* RENDER: TOOLBAR                                                           */
@@ -330,7 +335,7 @@ export default function MediaLibrary({ pickerMode = false, acceptTypes, onPick }
             <h1 className={`font-bold tracking-tight truncate ${isMobile ? "text-2xl" : "text-3xl"}`}>
               {pickerMode ? "Select File" : "Media Library"}
             </h1>
-            <p className="text-xs text-muted-foreground">{currentFolder ? `/${currentFolder}` : "All files"} · {total} items</p>
+            <p className="text-xs text-muted-foreground">{currentFolder ? `/${currentFolder}` : searchQuery ? "All folders" : "Root"} · {visibleFiles.length} items</p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -612,6 +617,7 @@ export default function MediaLibrary({ pickerMode = false, acceptTypes, onPick }
           {folders.map((f) => (
             <button key={f} onClick={() => setCurrentFolder(f)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg border bg-card hover:bg-accent transition-colors shrink-0">
               <FolderOpen className="h-4 w-4 text-muted-foreground" /><span className="text-sm font-medium">{f}</span>
+              <span className="text-xs tabular-nums text-muted-foreground">{folderCount(f)}</span>
             </button>
           ))}
         </div>
